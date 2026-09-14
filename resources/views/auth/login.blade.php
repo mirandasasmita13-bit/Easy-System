@@ -49,32 +49,30 @@
                 @csrf
 
 
-                {{-- EMAIL --}}
+                {{-- USERNAME / ID --}}
                 <div class="mb-5">
 
                     <label class="block text-sm font-medium
-                                  text-slate-700 mb-2">
-                        Email
+                                text-slate-700 mb-2">
+                        ID / Username
                     </label>
 
                     <input
-                        type="email"
-                        name="email"
-                        value="{{ old('email') }}"
+                        type="text"
+                        name="username"
+                        value="{{ old('username') }}"
                         required
                         autofocus
                         class="w-full px-4 py-3 rounded-xl
-                               border border-slate-200
-                               focus:outline-none
-                               focus:ring-2
-                               focus:ring-purple-500/20
-                               focus:border-purple-500"
-                        placeholder="nama@email.com"
+                            border border-slate-200
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-purple-500/20
+                            focus:border-purple-500"
+                        placeholder="Masukkan ID / username"
                     >
 
                 </div>
-
-
                 {{-- PASSWORD --}}
                 <div class="mb-6">
 

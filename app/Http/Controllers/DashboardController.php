@@ -16,574 +16,278 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        /*
-        |--------------------------------------------------------------------------
-        | ADMIN DASHBOARD
-        |--------------------------------------------------------------------------
-        |
-        | Sistem utama Easy System adalah untuk PPNPN.
-        |
-        | Role:
-        | - admin   : mengelola sistem
-        | - ppnpn   : pengguna utama sistem
-        | - pegawai : hanya digunakan untuk fitur Cuti Tambahan
-        |
-        */
-
+        // =========================================================
+        // DASHBOARD ADMIN
+        // =========================================================
         if ($user->role === 'admin') {
 
             $hariIni = Carbon::today();
 
-            /*
-            |--------------------------------------------------------------------------
-            | DATA PPNPN
-            |--------------------------------------------------------------------------
-            |
-            | Semua aktivitas utama dashboard admin menggunakan data PPNPN.
-            |
-            */
-
-            $ppnpn = User::where('role', 'ppnpn')
+            // PPNPN aktif & nonaktif
+            $ppnpnAktif = User::where('role', 'ppnpn')
+                ->where('status', 'aktif')
                 ->orderBy('name')
                 ->get();
 
+            $totalPpnpnAktif = $ppnpnAktif->count();
 
-            /*
-            |--------------------------------------------------------------------------
-            | TOTAL PPNPN
-            |--------------------------------------------------------------------------
-            */
+            $totalPpnpnNonaktif = User::where('role', 'ppnpn')
+                ->where('status', 'nonaktif')
+                ->count();
 
-            $totalPpnpn = $ppnpn->count();
+            $totalPpnpnSemua = $totalPpnpnAktif;
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | ABSENSI PPNPN HARI INI
-            |--------------------------------------------------------------------------
-            */
-
+            // Absensi PPNPN aktif hari ini
             $hadirPpnpn = Absensi::with('user')
                 ->whereDate('tanggal', $hariIni)
                 ->whereNotNull('jam_masuk')
-                ->whereHas('user', function ($query) {
-                    $query->where('role', 'ppnpn');
+                ->whereHas('user', function ($q) {
+                    $q->where('role', 'ppnpn')->where('status', 'aktif');
                 })
                 ->get();
 
+            $hadirHariIni = $hadirPpnpn->pluck('user_id')->unique()->count();
 
-            /*
-            |--------------------------------------------------------------------------
-            | JUMLAH PPNPN YANG HADIR HARI INI
-            |--------------------------------------------------------------------------
-            */
+            // PPNPN belum absen
+            $userSudahAbsen = $hadirPpnpn->pluck('user_id')->unique();
 
-            $hadirHariIni = $hadirPpnpn
-                ->pluck('user_id')
-                ->unique()
-                ->count();
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | PPNPN YANG BELUM ABSEN
-            |--------------------------------------------------------------------------
-            */
-
-            $userSudahAbsen = $hadirPpnpn
-                ->pluck('user_id')
-                ->unique();
-
-            $belumAbsenPpnpn = $ppnpn
+            $belumAbsenPpnpn = $ppnpnAktif
                 ->whereNotIn('id', $userSudahAbsen)
                 ->sortBy('name')
                 ->values();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | JUMLAH PPNPN YANG BELUM ABSEN
-            |--------------------------------------------------------------------------
-            */
-
             $belumAbsen = $belumAbsenPpnpn->count();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | CUTI PPNPN HARI INI
-            |--------------------------------------------------------------------------
-            */
-
+            // Cuti hari ini
             $cutiHariIniData = Pengajuancuti::with('user')
-                ->whereDate(
-                    'tanggal_mulai',
-                    '<=',
-                    $hariIni
-                )
-                ->whereDate(
-                    'tanggal_selesai',
-                    '>=',
-                    $hariIni
-                )
-                ->whereHas('user', function ($query) {
-                    $query->where('role', 'ppnpn');
+                ->whereDate('tanggal_mulai', '<=', $hariIni)
+                ->whereDate('tanggal_selesai', '>=', $hariIni)
+                ->whereHas('user', function ($q) {
+                    $q->where('role', 'ppnpn')->where('status', 'aktif');
                 })
                 ->get();
 
             $cutiHariIni = $cutiHariIniData->count();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | LEMBUR PPNPN HARI INI
-            |--------------------------------------------------------------------------
-            */
-
+            // Lembur hari ini
             $lemburHariIniData = Lembur::with('user')
-                ->whereDate(
-                    'tanggal',
-                    $hariIni
-                )
-                ->whereHas('user', function ($query) {
-                    $query->where('role', 'ppnpn');
+                ->whereDate('tanggal', $hariIni)
+                ->whereHas('user', function ($q) {
+                    $q->where('role', 'ppnpn')->where('status', 'aktif');
                 })
                 ->get();
 
             $lemburHariIni = $lemburHariIniData->count();
 
+            // Total pegawai (untuk cuti tambahan)
+            $totalPegawaiTetap = User::where('role', 'pegawai')->count();
 
-            /*
-            |--------------------------------------------------------------------------
-            | TOTAL PEGAWAI
-            |--------------------------------------------------------------------------
-            |
-            | Pegawai tetap tetap dihitung terpisah.
-            | Role pegawai hanya digunakan untuk fitur Cuti Tambahan.
-            |
-            */
-
-            $totalPegawaiTetap = User::where(
-                'role',
-                'pegawai'
-            )->count();
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | PERIODE BULAN BERJALAN
-            |--------------------------------------------------------------------------
-            */
-
+            // Periode bulan ini
             $awalBulan = $hariIni->copy()->startOfMonth();
             $akhirBulan = $hariIni->copy()->endOfMonth();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | CUTI PPNPN BULAN INI
-            |--------------------------------------------------------------------------
-            */
-
-            $jumlahCuti = Pengajuancuti::whereHas('user', function ($query) {
-                    $query->where('role', 'ppnpn');
+            // Jumlah cuti bulan ini
+            $jumlahCuti = Pengajuancuti::whereHas('user', function ($q) {
+                    $q->where('role', 'ppnpn');
                 })
-                ->whereDate(
-                    'tanggal_mulai',
-                    '<=',
-                    $akhirBulan
-                )
-                ->whereDate(
-                    'tanggal_selesai',
-                    '>=',
-                    $awalBulan
-                )
+                ->whereDate('tanggal_mulai', '<=', $akhirBulan)
+                ->whereDate('tanggal_selesai', '>=', $awalBulan)
                 ->count();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | LUPA ABSEN PPNPN BULAN INI
-            |--------------------------------------------------------------------------
-            */
-
-            $jumlahLupaAbsen = Pengajuanlupaabsen::whereHas('user', function ($query) {
-                    $query->where('role', 'ppnpn');
+            // Jumlah lupa absen bulan ini
+            $jumlahLupaAbsen = Pengajuanlupaabsen::whereHas('user', function ($q) {
+                    $q->where('role', 'ppnpn');
                 })
-                ->whereBetween(
-                    'tanggal',
-                    [
-                        $awalBulan->toDateString(),
-                        $akhirBulan->toDateString(),
-                    ]
-                )
+                ->whereBetween('tanggal', [
+                    $awalBulan->toDateString(),
+                    $akhirBulan->toDateString(),
+                ])
                 ->count();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | SURAT PPNPN BULAN INI
-            |--------------------------------------------------------------------------
-            */
-
-            $jumlahSurat = Pengajuansurat::whereHas('user', function ($query) {
-                    $query->where('role', 'ppnpn');
+            // Jumlah surat bulan ini
+            $jumlahSurat = Pengajuansurat::whereHas('user', function ($q) {
+                    $q->where('role', 'ppnpn');
                 })
-                ->whereBetween(
-                    'tanggal',
-                    [
-                        $awalBulan->toDateString(),
-                        $akhirBulan->toDateString(),
-                    ]
-                )
+                ->whereBetween('tanggal', [
+                    $awalBulan->toDateString(),
+                    $akhirBulan->toDateString(),
+                ])
                 ->count();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | LEMBUR PPNPN BULAN INI
-            |--------------------------------------------------------------------------
-            */
-
-            $jumlahLembur = Lembur::whereHas('user', function ($query) {
-                    $query->where('role', 'ppnpn');
+            // Jumlah lembur bulan ini
+            $jumlahLembur = Lembur::whereHas('user', function ($q) {
+                    $q->where('role', 'ppnpn');
                 })
-                ->whereBetween(
-                    'tanggal',
-                    [
-                        $awalBulan->toDateString(),
-                        $akhirBulan->toDateString(),
-                    ]
-                )
+                ->whereBetween('tanggal', [
+                    $awalBulan->toDateString(),
+                    $akhirBulan->toDateString(),
+                ])
                 ->count();
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | CUTI ALASAN PENTING PPNPN BULAN INI
-            |--------------------------------------------------------------------------
-            */
-
-            $jumlahCutiAlasanPentingBulanIni = Pengajuancuti::whereHas('user', function ($query) {
-                    $query->where('role', 'ppnpn');
+            // Jumlah cuti alasan penting bulan ini
+            $jumlahCutiAlasanPentingBulanIni = Pengajuancuti::whereHas('user', function ($q) {
+                    $q->where('role', 'ppnpn');
                 })
-                ->where(
-                    'jenis_cuti',
-                    'alasan_penting'
-                )
-                ->whereDate(
-                    'tanggal_mulai',
-                    '<=',
-                    $akhirBulan
-                )
-                ->whereDate(
-                    'tanggal_selesai',
-                    '>=',
-                    $awalBulan
-                )
+                ->where('jenis_cuti', 'alasan_penting')
+                ->whereDate('tanggal_mulai', '<=', $akhirBulan)
+                ->whereDate('tanggal_selesai', '>=', $awalBulan)
                 ->count();
 
+            $jumlahAktivitas = $jumlahCuti + $jumlahLupaAbsen + $jumlahSurat + $jumlahLembur;
 
-            /*
-            |--------------------------------------------------------------------------
-            | NAMA VARIABEL UNTUK STATISTIK DASHBOARD
-            |--------------------------------------------------------------------------
-            |
-            | Nama ini mengikuti Blade dashboard yang sekarang.
-            |
-            */
+            // Approval pending
+            $pendingLembur = Lembur::where('status_approval', 'pending')->count();
+            $pendingLupaAbsen = Pengajuanlupaabsen::where('status', 'pending')->count();
+            $totalPendingApproval = $pendingLembur + $pendingLupaAbsen;
 
+            // Total jam lembur disetujui bulan ini
+            $totalJamLemburBulanIni = Lembur::where('status_approval', 'approved')
+                ->whereBetween('tanggal', [
+                    $awalBulan->toDateString(),
+                    $akhirBulan->toDateString(),
+                ])
+                ->sum('total_jam');
+
+            // Cek tahun cuti usang
+            $perluResetCuti = User::where('role', 'ppnpn')
+                ->where('status', 'aktif')
+                ->where('tahun_cuti', '<', now()->year)
+                ->exists();
+
+            // Alias lama (kompatibel dengan blade)
+            $ppnpn = $ppnpnAktif;
+            $totalPegawai = $totalPpnpnAktif;
+            $hadirPegawai = $hadirPpnpn;
+            $belumAbsenPegawai = $belumAbsenPpnpn;
+            $totalPpnpn = $totalPpnpnAktif;
             $jumlahCutiBulanIni = $jumlahCuti;
-
             $jumlahLupaAbsenBulanIni = $jumlahLupaAbsen;
-
             $jumlahLemburBulanIni = $jumlahLembur;
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | TOTAL AKTIVITAS PPNPN BULAN INI
-            |--------------------------------------------------------------------------
-            */
-
-            $jumlahAktivitas =
-                $jumlahCuti +
-                $jumlahLupaAbsen +
-                $jumlahSurat +
-                $jumlahLembur;
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | ALIAS VARIABEL LAMA
-            |--------------------------------------------------------------------------
-            |
-            | Ini sengaja dipertahankan supaya Blade lama yang masih
-            | menggunakan nama "pegawai" tidak langsung error.
-            |
-            | Isinya tetap DATA PPNPN.
-            |
-            */
-
-            $totalPegawai = $totalPpnpn;
-
-            $hadirPegawai = $hadirPpnpn;
-
-            $belumAbsenPegawai = $belumAbsenPpnpn;
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | DASHBOARD ADMIN
-            |--------------------------------------------------------------------------
-            */
-
-            return view(
-                'dashboardadmin.index',
-                compact(
-                    'ppnpn',
-
-                    'totalPegawai',
-                    'totalPpnpn',
-                    'totalPegawaiTetap',
-
-                    'hadirHariIni',
-                    'hadirPpnpn',
-                    'hadirPegawai',
-
-                    'belumAbsen',
-                    'belumAbsenPpnpn',
-                    'belumAbsenPegawai',
-
-                    'cutiHariIni',
-                    'cutiHariIniData',
-
-                    'lemburHariIni',
-                    'lemburHariIniData',
-
-                    'jumlahCutiBulanIni',
-                    'jumlahLupaAbsenBulanIni',
-                    'jumlahLemburBulanIni',
-                    'jumlahCutiAlasanPentingBulanIni',
-
-                    'jumlahAktivitas'
-                )
-            );
+            return view('dashboardadmin.index', compact(
+                'ppnpn',
+                'totalPegawai', 'totalPpnpn', 'totalPegawaiTetap',
+                'totalPpnpnAktif', 'totalPpnpnNonaktif', 'totalPpnpnSemua',
+                'hadirHariIni', 'hadirPpnpn', 'hadirPegawai',
+                'belumAbsen', 'belumAbsenPpnpn', 'belumAbsenPegawai',
+                'cutiHariIni', 'cutiHariIniData',
+                'lemburHariIni', 'lemburHariIniData',
+                'jumlahCutiBulanIni', 'jumlahLupaAbsenBulanIni',
+                'jumlahLemburBulanIni', 'jumlahCutiAlasanPentingBulanIni',
+                'jumlahAktivitas',
+                'pendingLembur', 'pendingLupaAbsen', 'totalPendingApproval',
+                'totalJamLemburBulanIni',
+                'perluResetCuti'
+            ));
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | DASHBOARD USER / PPNPN / PEGAWAI
-        |--------------------------------------------------------------------------
-        |
-        | Bagian ini tetap menggunakan user yang sedang login.
-        |
-        */
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | PERIODE BULAN INI
-        |--------------------------------------------------------------------------
-        */
-
+        // =========================================================
+        // DASHBOARD USER (PPNPN / PEGAWAI)
+        // =========================================================
         $awalBulan = Carbon::now()->startOfMonth();
         $akhirBulan = Carbon::now()->endOfMonth();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | KEHADIRAN
-        |--------------------------------------------------------------------------
-        */
-
-        $jumlahKehadiran = Absensi::where(
-                'user_id',
-                $user->id
-            )
-            ->whereBetween(
-                'tanggal',
-                [
-                    $awalBulan->toDateString(),
-                    $akhirBulan->toDateString(),
-                ]
-            )
+        // Jumlah kehadiran bulan ini
+        $jumlahKehadiran = Absensi::where('user_id', $user->id)
+            ->whereBetween('tanggal', [
+                $awalBulan->toDateString(),
+                $akhirBulan->toDateString(),
+            ])
             ->whereNotNull('jam_masuk')
             ->count();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CUTI
-        |--------------------------------------------------------------------------
-        */
-
-        $jumlahCuti = Pengajuancuti::where(
-                'user_id',
-                $user->id
-            )
-            ->where(function ($query) use (
-                $awalBulan,
-                $akhirBulan
-            ) {
-                $query
-                    ->whereBetween(
-                        'tanggal_mulai',
-                        [
-                            $awalBulan->toDateString(),
-                            $akhirBulan->toDateString(),
-                        ]
-                    )
-                    ->orWhereBetween(
-                        'tanggal_selesai',
-                        [
-                            $awalBulan->toDateString(),
-                            $akhirBulan->toDateString(),
-                        ]
-                    );
+        // Jumlah cuti bulan ini
+        $jumlahCuti = Pengajuancuti::where('user_id', $user->id)
+            ->where(function ($q) use ($awalBulan, $akhirBulan) {
+                $q->whereBetween('tanggal_mulai', [
+                        $awalBulan->toDateString(),
+                        $akhirBulan->toDateString(),
+                    ])
+                    ->orWhereBetween('tanggal_selesai', [
+                        $awalBulan->toDateString(),
+                        $akhirBulan->toDateString(),
+                    ]);
             })
             ->count();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | LUPA ABSEN
-        |--------------------------------------------------------------------------
-        */
-
-        $jumlahLupaAbsen = Pengajuanlupaabsen::where(
-                'user_id',
-                $user->id
-            )
-            ->whereBetween(
-                'tanggal',
-                [
-                    $awalBulan->toDateString(),
-                    $akhirBulan->toDateString(),
-                ]
-            )
+        // Jumlah lupa absen bulan ini
+        $jumlahLupaAbsen = Pengajuanlupaabsen::where('user_id', $user->id)
+            ->whereBetween('tanggal', [
+                $awalBulan->toDateString(),
+                $akhirBulan->toDateString(),
+            ])
             ->count();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | SURAT
-        |--------------------------------------------------------------------------
-        */
-
-        $jumlahSurat = Pengajuansurat::where(
-                'user_id',
-                $user->id
-            )
-            ->whereBetween(
-                'tanggal',
-                [
-                    $awalBulan->toDateString(),
-                    $akhirBulan->toDateString(),
-                ]
-            )
+        // Jumlah surat bulan ini
+        $jumlahSurat = Pengajuansurat::where('user_id', $user->id)
+            ->whereBetween('tanggal', [
+                $awalBulan->toDateString(),
+                $akhirBulan->toDateString(),
+            ])
             ->count();
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | LEMBUR
-        |--------------------------------------------------------------------------
-        */
-
-        $jumlahLembur = Lembur::where(
-                'user_id',
-                $user->id
-            )
-            ->whereBetween(
-                'tanggal',
-                [
-                    $awalBulan->toDateString(),
-                    $akhirBulan->toDateString(),
-                ]
-            )
+        // Jumlah lembur bulan ini
+        $jumlahLembur = Lembur::where('user_id', $user->id)
+            ->whereBetween('tanggal', [
+                $awalBulan->toDateString(),
+                $akhirBulan->toDateString(),
+            ])
             ->count();
 
+        $jumlahAktivitas = $jumlahCuti + $jumlahLupaAbsen + $jumlahSurat + $jumlahLembur;
 
-        /*
-        |--------------------------------------------------------------------------
-        | TOTAL AKTIVITAS
-        |--------------------------------------------------------------------------
-        */
+        // Sisa cuti
+        $sisaCuti = $user->sisaCutiTahunan();
+        $cutiTerpakai = $user->totalCutiTerpakai();
 
-        $jumlahAktivitas =
-            $jumlahCuti +
-            $jumlahLupaAbsen +
-            $jumlahSurat +
-            $jumlahLembur;
+        // Total jam lembur disetujui bulan ini
+        $totalLembur = Lembur::where('user_id', $user->id)
+            ->where('status_approval', 'approved')
+            ->whereBetween('tanggal', [
+                $awalBulan->toDateString(),
+                $akhirBulan->toDateString(),
+            ])
+            ->sum('total_jam');
 
+        // Pengajuan pending milik user
+        $pendingLemburSaya = Lembur::where('user_id', $user->id)
+            ->where('status_approval', 'pending')
+            ->count();
 
-        /*
-        |--------------------------------------------------------------------------
-        | SISA CUTI
-        |--------------------------------------------------------------------------
-        |
-        | Hanya cuti tahunan yang mengurangi kuota 12 hari.
-        |
-        */
+        $pendingLupaAbsenSaya = Pengajuanlupaabsen::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->count();
 
-        $cutiTerpakai = Pengajuancuti::where(
-                'user_id',
-                $user->id
-            )
-            ->where(
-                'jenis_cuti',
-                'tahunan'
-            )
-            ->whereYear(
-                'tanggal_mulai',
-                now()->year
-            )
-            ->sum('jumlah_hari');
+        // Total pengajuan pending (untuk card di dashboard)
+        $totalPending = $pendingLemburSaya + $pendingLupaAbsenSaya;
 
+        // Pengajuan disetujui hari ini
+        $approvedLupaAbsenSaya = Pengajuanlupaabsen::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('approved_at', today())
+            ->count();
 
-        $sisaCuti = max(
-            0,
-            12 - $cutiTerpakai
-        );
+        $approvedLemburSaya = Lembur::where('user_id', $user->id)
+            ->where('status_approval', 'approved')
+            ->whereDate('approved_at', today())
+            ->count();
 
+        $totalApprovedHariIni = $approvedLupaAbsenSaya + $approvedLemburSaya;
 
-        /*
-        |--------------------------------------------------------------------------
-        | DASHBOARD PEGAWAI
-        |--------------------------------------------------------------------------
-        |
-        | Pegawai hanya memiliki fitur khusus seperti Cuti Tambahan.
-        |
-        */
-
+        // Dashboard pegawai (role pegawai — cuti tambahan saja)
         if ($user->role === 'pegawai') {
-
-            return view(
-                'dashboardpegawai.index',
-                compact(
-                    'sisaCuti',
-                    'jumlahKehadiran',
-                    'jumlahAktivitas'
-                )
-            );
+            return view('dashboardpegawai.index', compact(
+                'sisaCuti', 'cutiTerpakai', 'jumlahKehadiran', 'jumlahAktivitas'
+            ));
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | DASHBOARD PPNPN
-        |--------------------------------------------------------------------------
-        */
-
-        return view(
-            'dashboard.index',
-            compact(
-                'sisaCuti',
-                'jumlahKehadiran',
-                'jumlahAktivitas'
-            )
-        );
+        // Dashboard PPNPN
+        return view('dashboard.index', compact(
+            'sisaCuti', 'cutiTerpakai',
+            'jumlahKehadiran', 'jumlahAktivitas',
+            'totalLembur',
+            'pendingLemburSaya', 'pendingLupaAbsenSaya',
+            'totalPending', 'totalApprovedHariIni'
+        ));
     }
 }

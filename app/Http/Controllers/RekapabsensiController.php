@@ -16,162 +16,141 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class RekapabsensiController extends Controller
 {
+    /* =========================================================
+       HELPER: Susun data absensi (dipisah valid vs pending)
+       ========================================================= */
+    private function susunAbsensi($absensiData, bool $perUser = true): array
+    {
+        $absensi      = [];
+        $absensiHadir = [];
 
-    // REKAP ABSENSI ADMIN
+        foreach ($absensiData as $item) {
+            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
+
+            if ($perUser) {
+                $absensi[$item->user_id][$tanggalKey] = $item;
+                if ($item->status_approval !== 'pending') {
+                    $absensiHadir[$item->user_id][$tanggalKey] = $item;
+                }
+            } else {
+                $absensi[$tanggalKey] = $item;
+                if ($item->status_approval !== 'pending') {
+                    $absensiHadir[$tanggalKey] = $item;
+                }
+            }
+        }
+
+        return [$absensi, $absensiHadir];
+    }
+
+
+    /* =========================================================
+       REKAP ABSENSI ADMIN
+       ========================================================= */
     public function index(Request $request)
     {
         $bulan = (int) ($request->bulan ?? now()->month);
         $tahun = (int) ($request->tahun ?? now()->year);
 
-        $tanggalAwal = Carbon::create($tahun, $bulan, 1)->startOfMonth();
+        $tanggalAwal  = Carbon::create($tahun, $bulan, 1)->startOfMonth();
         $tanggalAkhir = Carbon::create($tahun, $bulan, 1)->endOfMonth();
 
-        // Daftar tanggal dalam bulan
         $tanggal = [];
-
         $hari = $tanggalAwal->copy();
-
         while ($hari->lte($tanggalAkhir)) {
             $tanggal[] = $hari->copy();
             $hari->addDay();
         }
 
-        // Data Pengguna
-        $ppnpn = User::whereIn('role', ['ppnpn'])
+        // PPNPN AKTIF SAJA
+        $ppnpn = User::where('role', 'ppnpn')
+            ->where('status', 'aktif')
             ->orderBy('name')
             ->get();
 
-        // Absensiloh 
+        // ABSENSI
         $absensiData = Absensi::whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
             ])
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
             ->get();
 
-        $absensi = [];
+        [$absensi, $absensiHadir] = $this->susunAbsensi($absensiData, true);
 
-        foreach ($absensiData as $item) {
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $absensi[$item->user_id][$tanggalKey] = $item;
-        }
-
-        // CUTI
-        // PENTING:
-        // Cuti hanya dimasukkan ke rekap pada HARI KERJA.
-        // Jadi jika pengajuan cuti 6 hari kalender dan di dalamnya
-        // terdapat Sabtu + Minggu, maka Sabtu dan Minggu TIDAK
-        // akan ditandai sebagai CUTI.
+        // CUTI (hanya hari kerja)
         $cutiData = Pengajuancuti::whereDate('tanggal_mulai', '<=', $tanggalAkhir)
             ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
             ->get();
 
         $cuti = [];
-
         foreach ($cutiData as $item) {
-
-            $mulai = Carbon::parse($item->tanggal_mulai);
+            $mulai   = Carbon::parse($item->tanggal_mulai);
             $selesai = Carbon::parse($item->tanggal_selesai);
 
             while ($mulai->lte($selesai)) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | Hanya hari kerja
-                |--------------------------------------------------------------------------
-                */
-
-                if (!$mulai->isWeekend()) {
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Pastikan tanggal masih berada di bulan yang sedang dilihat
-                    |--------------------------------------------------------------------------
-                    */
-
-                    if ($mulai->between($tanggalAwal, $tanggalAkhir)) {
-
-                        $tanggalKey = $mulai->format('Y-m-d');
-
-                        $cuti[$item->user_id][$tanggalKey] = $item;
-                    }
+                if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
+                    $cuti[$item->user_id][$mulai->format('Y-m-d')] = $item;
                 }
-
                 $mulai->addDay();
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | LUPA ABSEN
-        |--------------------------------------------------------------------------
-        */
-
+        // LUPA ABSEN
         $lupaData = Pengajuanlupaabsen::whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
             ])
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
             ->get();
 
         $lupaAbsen = [];
-
         foreach ($lupaData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $lupaAbsen[$item->user_id][$tanggalKey] = $item;
+            $lupaAbsen[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | LEMBUR
-        |--------------------------------------------------------------------------
-        |
-        | Lembur dipisahkan dari rekap absensi utama.
-        |
-        */
-
-        $lemburData = \App\Models\Lembur::whereBetween('tanggal', [
+        // SURAT SAKIT
+        $sakitData = Pengajuansurat::whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
             ])
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
+                  ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
+                  ->orWhere(function ($sub) {
+                      $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
+                          ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
+                  });
+            })
             ->get();
 
-        $lembur = [];
-
-        foreach ($lemburData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $lembur[$item->user_id][$tanggalKey] = $item;
+        $suratSakit = [];
+        foreach ($sakitData as $item) {
+            $suratSakit[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | DATA UNTUK VIEW
-        |--------------------------------------------------------------------------
-        */
-
         return view('rekapabsensi.index', compact(
-            'bulan',
-            'tahun',
-            'tanggalAwal',
-            'tanggalAkhir',
-            'tanggal',
+            'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
             'ppnpn',
-            'absensi',
-            'cuti',
-            'lupaAbsen',
-            'lembur'
+            'absensi', 'absensiHadir',
+            'cuti', 'lupaAbsen', 'suratSakit'
         ));
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT EXCEL ADMIN
-    |--------------------------------------------------------------------------
-    */
 
+    /* =========================================================
+       EXPORT EXCEL ADMIN
+       ========================================================= */
     public function exportExcel(Request $request)
     {
         $bulan = (int) ($request->bulan ?? now()->month);
@@ -183,206 +162,132 @@ class RekapabsensiController extends Controller
         );
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT PDF ADMIN
-    |--------------------------------------------------------------------------
-    */
 
+    /* =========================================================
+       EXPORT PDF ADMIN
+       ========================================================= */
     public function exportPdf(Request $request)
     {
         $bulan = (int) ($request->bulan ?? now()->month);
         $tahun = (int) ($request->tahun ?? now()->year);
 
-        $tanggalAwal = Carbon::create($tahun, $bulan, 1)->startOfMonth();
+        $tanggalAwal  = Carbon::create($tahun, $bulan, 1)->startOfMonth();
         $tanggalAkhir = Carbon::create($tahun, $bulan, 1)->endOfMonth();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Tanggal
-        |--------------------------------------------------------------------------
-        */
-
         $tanggal = [];
-
         $hari = $tanggalAwal->copy();
-
         while ($hari->lte($tanggalAkhir)) {
             $tanggal[] = $hari->copy();
             $hari->addDay();
         }
 
-    
-        // Data Pengguna
-        $ppnpn = User::whereIn('role', ['ppnpn'])
+        $ppnpn = User::where('role', 'ppnpn')
+            ->where('status', 'aktif')
             ->orderBy('name')
             ->get();
-
-        /*
-        |--------------------------------------------------------------------------
-        | Absensi
-        |--------------------------------------------------------------------------
-        */
 
         $absensiData = Absensi::whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
             ])
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
             ->get();
 
-        $absensi = [];
+        [$absensi, $absensiHadir] = $this->susunAbsensi($absensiData, true);
 
-        foreach ($absensiData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $absensi[$item->user_id][$tanggalKey] = $item;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Cuti
-        |--------------------------------------------------------------------------
-        |
-        | Hanya hari kerja yang masuk.
-        |
-        */
-
+        // CUTI
         $cutiData = Pengajuancuti::whereDate('tanggal_mulai', '<=', $tanggalAkhir)
             ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
             ->get();
 
         $cuti = [];
-
         foreach ($cutiData as $item) {
-
             $mulai = Carbon::parse($item->tanggal_mulai);
             $selesai = Carbon::parse($item->tanggal_selesai);
-
             while ($mulai->lte($selesai)) {
-
-                if (
-                    !$mulai->isWeekend()
-                    && $mulai->between($tanggalAwal, $tanggalAkhir)
-                ) {
-
-                    $tanggalKey = $mulai->format('Y-m-d');
-
-                    $cuti[$item->user_id][$tanggalKey] = $item;
+                if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
+                    $cuti[$item->user_id][$mulai->format('Y-m-d')] = $item;
                 }
-
                 $mulai->addDay();
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Lupa Absen
-        |--------------------------------------------------------------------------
-        */
-
+        // LUPA ABSEN
         $lupaData = Pengajuanlupaabsen::whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
             ])
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
             ->get();
 
         $lupaAbsen = [];
-
         foreach ($lupaData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $lupaAbsen[$item->user_id][$tanggalKey] = $item;
+            $lupaAbsen[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Lembur
-        |--------------------------------------------------------------------------
-        */
-
-        $lemburData = \App\Models\Lembur::whereBetween('tanggal', [
+        // SURAT SAKIT
+        $sakitData = Pengajuansurat::whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
             ])
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
+                  ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
+                  ->orWhere(function ($sub) {
+                      $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
+                          ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
+                  });
+            })
             ->get();
 
-        $lembur = [];
-
-        foreach ($lemburData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $lembur[$item->user_id][$tanggalKey] = $item;
+        $suratSakit = [];
+        foreach ($sakitData as $item) {
+            $suratSakit[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | PDF
-        |--------------------------------------------------------------------------
-        */
-
         $pdf = Pdf::loadView('rekapabsensi.pdf', compact(
-            'bulan',
-            'tahun',
-            'tanggalAwal',
-            'tanggalAkhir',
-            'tanggal',
+            'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
             'ppnpn',
-            'absensi',
-            'cuti',
-            'lupaAbsen',
-            'lembur'
+            'absensi', 'absensiHadir',
+            'cuti', 'lupaAbsen', 'suratSakit'
         ));
 
         $pdf->setPaper('a4', 'landscape');
 
         return $pdf->download(
-            'rekap-absensi-' .
-            $tahun .
-            '-' .
-            str_pad($bulan, 2, '0', STR_PAD_LEFT) .
-            '.pdf'
+            'rekap-absensi-' . $tahun . '-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '.pdf'
         );
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | REKAP SAYA
-    |--------------------------------------------------------------------------
-    */
 
+    /* =========================================================
+       REKAP SAYA (individu)
+       ========================================================= */
     public function rekapSaya(Request $request)
     {
-        $user = auth()->user();
-
+        $user  = auth()->user();
         $bulan = (int) ($request->bulan ?? now()->month);
         $tahun = (int) ($request->tahun ?? now()->year);
 
-        $tanggalAwal = Carbon::create($tahun, $bulan, 1)->startOfMonth();
+        $tanggalAwal  = Carbon::create($tahun, $bulan, 1)->startOfMonth();
         $tanggalAkhir = Carbon::create($tahun, $bulan, 1)->endOfMonth();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Tanggal
-        |--------------------------------------------------------------------------
-        */
-
         $tanggal = [];
-
         $hari = $tanggalAwal->copy();
-
         while ($hari->lte($tanggalAkhir)) {
             $tanggal[] = $hari->copy();
             $hari->addDay();
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | ABSENSI
-        |--------------------------------------------------------------------------
-        */
 
         $absensiData = Absensi::where('user_id', $user->id)
             ->whereBetween('tanggal', [
@@ -391,65 +296,27 @@ class RekapabsensiController extends Controller
             ])
             ->get();
 
-        $absensi = [];
+        [$absensi, $absensiHadir] = $this->susunAbsensi($absensiData, false);
 
-        foreach ($absensiData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $absensi[$tanggalKey] = $item;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | CUTI
-        |--------------------------------------------------------------------------
-        |
-        | PENTING:
-        | Weekend tidak dimasukkan sebagai CUTI.
-        |
-        */
-
+        // CUTI
         $cutiData = Pengajuancuti::where('user_id', $user->id)
             ->whereDate('tanggal_mulai', '<=', $tanggalAkhir)
             ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
             ->get();
 
         $cuti = [];
-
         foreach ($cutiData as $item) {
-
             $mulai = Carbon::parse($item->tanggal_mulai);
             $selesai = Carbon::parse($item->tanggal_selesai);
-
             while ($mulai->lte($selesai)) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | Hanya hari kerja
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    !$mulai->isWeekend()
-                    && $mulai->between($tanggalAwal, $tanggalAkhir)
-                ) {
-
-                    $tanggalKey = $mulai->format('Y-m-d');
-
-                    $cuti[$tanggalKey] = $item;
+                if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
+                    $cuti[$mulai->format('Y-m-d')] = $item;
                 }
-
                 $mulai->addDay();
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | LUPA ABSEN
-        |--------------------------------------------------------------------------
-        */
-
+        // LUPA ABSEN
         $lupaData = Pengajuanlupaabsen::where('user_id', $user->id)
             ->whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
@@ -458,238 +325,97 @@ class RekapabsensiController extends Controller
             ->get();
 
         $lupaAbsen = [];
-
         foreach ($lupaData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $lupaAbsen[$tanggalKey] = $item;
+            $lupaAbsen[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | LEMBUR
-        |--------------------------------------------------------------------------
-        */
-
-        $lemburData = \App\Models\Lembur::where('user_id', $user->id)
-            ->whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->get();
-
-        $lembur = [];
-
-        foreach ($lemburData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $lembur[$tanggalKey] = $item;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | SURAT SAKIT
-        |--------------------------------------------------------------------------
-        |
-        | Mendukung:
-        |
-        | - jenis_surat mengandung "sakit"
-        | - keperluan mengandung "sakit"
-        | - jenis_surat = surat_keterangan + keperluan = berobat
-        |
-        */
-
-        $suratSakitData = Pengajuansurat::where(
-                'user_id',
-                $user->id
-            )
+        // SURAT SAKIT
+        $suratSakitData = Pengajuansurat::where('user_id', $user->id)
             ->whereDate('tanggal', '>=', $tanggalAwal->format('Y-m-d'))
             ->whereDate('tanggal', '<=', $tanggalAkhir->format('Y-m-d'))
             ->where(function ($query) {
-
-                $query
-                    ->whereRaw(
-                        'LOWER(COALESCE(jenis_surat, "")) LIKE ?',
-                        ['%sakit%']
-                    )
-
-                    ->orWhereRaw(
-                        'LOWER(COALESCE(keperluan, "")) LIKE ?',
-                        ['%sakit%']
-                    )
-
+                $query->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
+                    ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
                     ->orWhere(function ($q) {
-
-                        $q->whereRaw(
-                            'LOWER(COALESCE(jenis_surat, "")) = ?',
-                            ['surat_keterangan']
-                        )
-
-                        ->whereRaw(
-                            'LOWER(COALESCE(keperluan, "")) LIKE ?',
-                            ['%berobat%']
-                        );
+                        $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
+                          ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
                     });
             })
             ->get();
 
         $suratSakit = [];
-
         foreach ($suratSakitData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $suratSakit[$tanggalKey] = $item;
+            $suratSakit[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | HITUNG JUMLAH
-        |--------------------------------------------------------------------------
-        */
-
+        // HITUNG
         $jumlahHadir = 0;
         $jumlahCutiTahunan = 0;
         $jumlahCutiAlasanPenting = 0;
         $jumlahSakit = 0;
-        $jumlahLembur = $lemburData->count();
-
-        /*
-        |--------------------------------------------------------------------------
-        | PERHITUNGAN STATUS
-        |--------------------------------------------------------------------------
-        |
-        | Weekend tidak dihitung sebagai cuti.
-        |
-        */
+        $jumlahPending = 0;
 
         foreach ($tanggal as $hari) {
-
             $tanggalKey = $hari->format('Y-m-d');
 
-            $adaAbsensi = isset($absensi[$tanggalKey]);
-            $adaCuti = isset($cuti[$tanggalKey]);
-            $adaSakit = isset($suratSakit[$tanggalKey]);
-            $adaLupa = isset($lupaAbsen[$tanggalKey]);
+            $adaAbsensi    = isset($absensi[$tanggalKey]);
+            $adaHadirValid = isset($absensiHadir[$tanggalKey]);
+            $adaCuti       = isset($cuti[$tanggalKey]);
+            $adaSakit      = isset($suratSakit[$tanggalKey]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Weekend
-            |--------------------------------------------------------------------------
-            |
-            | Kalau ada absensi aktual di weekend,
-            | tetap dihitung HADIR.
-            |
-            */
+            $absensiPending = $adaAbsensi
+                && $absensi[$tanggalKey]->status_approval === 'pending';
+
+            if ($absensiPending) {
+                $jumlahPending++;
+            }
 
             if ($hari->isWeekend()) {
-
-                if ($adaAbsensi) {
+                if ($adaHadirValid) {
                     $jumlahHadir++;
                 }
-
                 continue;
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Hari kerja
-            |--------------------------------------------------------------------------
-            */
-
-            if ($adaAbsensi) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | Jika ada surat sakit pada hari kerja,
-                | tetap gunakan status Sakit untuk rekap.
-                |--------------------------------------------------------------------------
-                */
-
+            if ($adaHadirValid) {
                 if ($adaSakit) {
                     $jumlahSakit++;
                 } else {
                     $jumlahHadir++;
                 }
-
             } elseif ($adaSakit) {
-
                 $jumlahSakit++;
-
             } elseif ($adaCuti) {
-
-                $jenisCuti = strtolower(
-                    trim($cuti[$tanggalKey]->jenis_cuti ?? '')
-                );
-
-                if (
-                    str_contains($jenisCuti, 'alasan')
-                    || str_contains($jenisCuti, 'penting')
-                ) {
-
+                $jenisCuti = strtolower(trim($cuti[$tanggalKey]->jenis_cuti ?? ''));
+                if (str_contains($jenisCuti, 'alasan') || str_contains($jenisCuti, 'penting')) {
                     $jumlahCutiAlasanPenting++;
-
                 } else {
-
                     $jumlahCutiTahunan++;
                 }
-
-            } elseif ($adaLupa) {
-
-                // Lupa absen tidak dihitung sebagai hadir.
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Total hari kerja
-        |--------------------------------------------------------------------------
-        */
-
         $totalHariKerja = 0;
-
         foreach ($tanggal as $hari) {
-
             if (!$hari->isWeekend()) {
                 $totalHariKerja++;
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | KIRIM KE VIEW
-        |--------------------------------------------------------------------------
-        */
-
         return view('rekap_saya.index', compact(
-            'user',
-            'bulan',
-            'tahun',
-            'tanggalAwal',
-            'tanggalAkhir',
-            'tanggal',
-            'absensi',
-            'cuti',
-            'lupaAbsen',
-            'lembur',
-            'suratSakit',
-            'jumlahHadir',
-            'jumlahCutiTahunan',
-            'jumlahCutiAlasanPenting',
-            'jumlahSakit',
-            'jumlahLembur',
+            'user', 'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
+            'absensi', 'absensiHadir',
+            'cuti', 'lupaAbsen', 'suratSakit',
+            'jumlahHadir', 'jumlahCutiTahunan', 'jumlahCutiAlasanPenting',
+            'jumlahSakit', 'jumlahPending',
             'totalHariKerja'
         ));
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT EXCEL REKAP SAYA
-    |--------------------------------------------------------------------------
-    */
 
+    /* =========================================================
+       EXPORT EXCEL REKAP SAYA
+       ========================================================= */
     public function exportExcelSaya(Request $request)
     {
         $bulan = (int) ($request->bulan ?? now()->month);
@@ -697,50 +423,29 @@ class RekapabsensiController extends Controller
 
         return Excel::download(
             new RekapSayaExport($bulan, $tahun),
-            'rekap-saya-' .
-            $tahun .
-            '-' .
-            str_pad($bulan, 2, '0', STR_PAD_LEFT) .
-            '.xlsx'
+            'rekap-saya-' . $tahun . '-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '.xlsx'
         );
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT PDF REKAP SAYA
-    |--------------------------------------------------------------------------
-    */
 
+    /* =========================================================
+       EXPORT PDF REKAP SAYA
+       ========================================================= */
     public function exportPdfSaya(Request $request)
     {
-        $user = auth()->user();
-
+        $user  = auth()->user();
         $bulan = (int) ($request->bulan ?? now()->month);
         $tahun = (int) ($request->tahun ?? now()->year);
 
-        $tanggalAwal = Carbon::create($tahun, $bulan, 1)->startOfMonth();
+        $tanggalAwal  = Carbon::create($tahun, $bulan, 1)->startOfMonth();
         $tanggalAkhir = Carbon::create($tahun, $bulan, 1)->endOfMonth();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Tanggal
-        |--------------------------------------------------------------------------
-        */
-
         $tanggal = [];
-
         $hari = $tanggalAwal->copy();
-
         while ($hari->lte($tanggalAkhir)) {
             $tanggal[] = $hari->copy();
             $hari->addDay();
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Absensi
-        |--------------------------------------------------------------------------
-        */
 
         $absensiData = Absensi::where('user_id', $user->id)
             ->whereBetween('tanggal', [
@@ -749,58 +454,27 @@ class RekapabsensiController extends Controller
             ])
             ->get();
 
-        $absensi = [];
+        [$absensi, $absensiHadir] = $this->susunAbsensi($absensiData, false);
 
-        foreach ($absensiData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $absensi[$tanggalKey] = $item;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Cuti
-        |--------------------------------------------------------------------------
-        |
-        | Weekend dilewati.
-        |
-        */
-
+        // CUTI
         $cutiData = Pengajuancuti::where('user_id', $user->id)
             ->whereDate('tanggal_mulai', '<=', $tanggalAkhir)
             ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
             ->get();
 
         $cuti = [];
-
         foreach ($cutiData as $item) {
-
             $mulai = Carbon::parse($item->tanggal_mulai);
             $selesai = Carbon::parse($item->tanggal_selesai);
-
             while ($mulai->lte($selesai)) {
-
-                if (
-                    !$mulai->isWeekend()
-                    && $mulai->between($tanggalAwal, $tanggalAkhir)
-                ) {
-
-                    $tanggalKey = $mulai->format('Y-m-d');
-
-                    $cuti[$tanggalKey] = $item;
+                if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
+                    $cuti[$mulai->format('Y-m-d')] = $item;
                 }
-
                 $mulai->addDay();
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Lupa Absen
-        |--------------------------------------------------------------------------
-        */
-
+        // LUPA ABSEN
         $lupaData = Pengajuanlupaabsen::where('user_id', $user->id)
             ->whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
@@ -809,113 +483,39 @@ class RekapabsensiController extends Controller
             ->get();
 
         $lupaAbsen = [];
-
         foreach ($lupaData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $lupaAbsen[$tanggalKey] = $item;
+            $lupaAbsen[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Lembur
-        |--------------------------------------------------------------------------
-        */
-
-        $lemburData = \App\Models\Lembur::where('user_id', $user->id)
-            ->whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->get();
-
-        $lembur = [];
-
-        foreach ($lemburData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $lembur[$tanggalKey] = $item;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Surat Sakit
-        |--------------------------------------------------------------------------
-        */
-
-        $suratSakitData = Pengajuansurat::where(
-                'user_id',
-                $user->id
-            )
+        // SURAT SAKIT
+        $suratSakitData = Pengajuansurat::where('user_id', $user->id)
             ->whereDate('tanggal', '>=', $tanggalAwal->format('Y-m-d'))
             ->whereDate('tanggal', '<=', $tanggalAkhir->format('Y-m-d'))
             ->where(function ($query) {
-
-                $query
-                    ->whereRaw(
-                        'LOWER(COALESCE(jenis_surat, "")) LIKE ?',
-                        ['%sakit%']
-                    )
-
-                    ->orWhereRaw(
-                        'LOWER(COALESCE(keperluan, "")) LIKE ?',
-                        ['%sakit%']
-                    )
-
+                $query->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
+                    ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
                     ->orWhere(function ($q) {
-
-                        $q->whereRaw(
-                            'LOWER(COALESCE(jenis_surat, "")) = ?',
-                            ['surat_keterangan']
-                        )
-
-                        ->whereRaw(
-                            'LOWER(COALESCE(keperluan, "")) LIKE ?',
-                            ['%berobat%']
-                        );
+                        $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
+                          ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
                     });
             })
             ->get();
 
         $suratSakit = [];
-
         foreach ($suratSakitData as $item) {
-
-            $tanggalKey = Carbon::parse($item->tanggal)->format('Y-m-d');
-
-            $suratSakit[$tanggalKey] = $item;
+            $suratSakit[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | PDF
-        |--------------------------------------------------------------------------
-        */
-
         $pdf = Pdf::loadView('rekap_saya.pdf', compact(
-            'user',
-            'bulan',
-            'tahun',
-            'tanggalAwal',
-            'tanggalAkhir',
-            'tanggal',
-            'absensi',
-            'cuti',
-            'lupaAbsen',
-            'lembur',
-            'suratSakit'
+            'user', 'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
+            'absensi', 'absensiHadir',
+            'cuti', 'lupaAbsen', 'suratSakit'
         ));
 
         $pdf->setPaper('a4', 'landscape');
 
         return $pdf->download(
-            'rekap-saya-' .
-            $tahun .
-            '-' .
-            str_pad($bulan, 2, '0', STR_PAD_LEFT) .
-            '.pdf'
+            'rekap-saya-' . $tahun . '-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '.pdf'
         );
     }
 }

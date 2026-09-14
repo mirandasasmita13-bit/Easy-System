@@ -15,40 +15,33 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
+        // POIN 1: Pakai username, bukan email
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'username' => ['required', 'string'],
             'password' => ['required'],
         ]);
 
         if (Auth::attempt($credentials)) {
-
             $request->session()->regenerate();
-
             return redirect()->intended('/dashboard');
         }
 
         return back()
             ->withErrors([
-                'email' => 'Email atau password salah.',
+                'username' => 'ID atau password salah.',
             ])
-            ->onlyInput('email');
+            ->onlyInput('username');
     }
 
     public function logout(Request $request)
     {
         Auth::logout();
-
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-
         return redirect('/login');
     }
 
-
-    // =========================
     // REGISTER
-    // =========================
-
     public function register()
     {
         return view('auth.register');
@@ -59,10 +52,13 @@ class LoginController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
 
-            'email' => [
+            // POIN 1: username, unique
+            'username' => [
                 'required',
-                'email',
-                'unique:users,email',
+                'string',
+                'max:50',
+                'unique:users,username',
+                'regex:/^[a-zA-Z0-9._-]+$/',
             ],
 
             'password' => [
@@ -72,14 +68,16 @@ class LoginController extends Controller
             ],
         ]);
 
-        // Buat Akun
         User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $data['password'],
-            'role' => 'ppnpn',
+            'name'                   => $data['name'],
+            'username'               => $data['username'],
+            'password'               => $data['password'],
+            'role'                   => 'ppnpn',
+            'status'                 => 'aktif',
+            'jatah_cuti_tahunan'     => 12,
+            'cuti_tahunan_sebelumnya'=> 0,
+            'tahun_cuti'             => now()->year,
         ]);
-
 
         return redirect('/login')
             ->with('success', 'Akun berhasil dibuat. Silakan login.');

@@ -129,25 +129,16 @@ class AbsensiController extends Controller
         // ------------------------------------------
 
         Absensi::create([
-
-            'user_id' => $user->id,
-
-            'tanggal' => today(),
-
-            'shift' => $request->shift,
-
-            'jam_masuk' => now()->format('H:i:s'),
-
-            'keterangan' => 'H',
-
-            'latitude' => $request->latitude,
-
-            'longitude' => $request->longitude,
-
-            'jarak' => round($jarak, 2),
-
-            'foto_masuk' => $foto,
-
+            'user_id'        => $user->id,
+            'tanggal'        => today(),
+            'shift'          => $request->shift,
+            'jam_masuk'      => now()->format('H:i:s'),
+            'keterangan'     => 'H',
+            'status_approval'=> 'normal',   // ← tambah ini
+            'latitude'       => $request->latitude,
+            'longitude'      => $request->longitude,
+            'jarak'          => round($jarak, 2),
+            'foto_masuk'     => $foto,
         ]);
 
         return back()->with(

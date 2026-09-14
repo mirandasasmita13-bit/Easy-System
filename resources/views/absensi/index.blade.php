@@ -8,207 +8,86 @@
         HEADER
     ========================================================== --}}
     <div class="mb-6">
-
         <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
             Absensi
         </h2>
-
         <p class="mt-2 text-slate-500">
             Catat kehadiran kamu untuk hari ini.
         </p>
-
     </div>
 
-    {{-- =========================================================
-        PESAN SUCCESS
-    ========================================================== --}}
+    {{-- PESAN --}}
     @if(session('success'))
-
-        <div class="mb-5 rounded-xl
-                    bg-emerald-50
-                    border border-emerald-200
-                    px-5 py-4
-                    text-sm font-medium
-                    text-emerald-700">
-
+        <div class="mb-5 rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-4 text-sm font-medium text-emerald-700">
             {{ session('success') }}
-
         </div>
-
     @endif
 
-
-    {{-- =========================================================
-        PESAN ERROR
-    ========================================================== --}}
     @if(session('error'))
-
-        <div class="mb-5 rounded-xl
-                    bg-red-50
-                    border border-red-200
-                    px-5 py-4
-                    text-sm font-medium
-                    text-red-700">
-
+        <div class="mb-5 rounded-xl bg-red-50 border border-red-200 px-5 py-4 text-sm font-medium text-red-700">
             {{ session('error') }}
-
         </div>
-
     @endif
 
-
-    {{-- =========================================================
-        VALIDATION ERROR
-    ========================================================== --}}
     @if($errors->any())
-
-        <div class="mb-5 rounded-xl
-                    bg-red-50
-                    border border-red-200
-                    px-5 py-4
-                    text-sm text-red-700">
-
-            <p class="font-semibold mb-2">
-                Absensi gagal:
-            </p>
-
+        <div class="mb-5 rounded-xl bg-red-50 border border-red-200 px-5 py-4 text-sm text-red-700">
+            <p class="font-semibold mb-2">Absensi gagal:</p>
             <ul class="list-disc list-inside space-y-1">
-
                 @foreach($errors->all() as $error)
-
-                    <li>
-                        {{ $error }}
-                    </li>
-
+                    <li>{{ $error }}</li>
                 @endforeach
-
             </ul>
-
         </div>
-
     @endif
+
 
     {{-- =========================================================
         HERO CLOCK
     ========================================================== --}}
     <div class="dashboard-hero mb-7 overflow-hidden">
 
-        {{-- dekorasi --}}
-        <div class="absolute -right-16 -top-20
-                    w-56 h-56
-                    rounded-full
-                    bg-white/10">
-        </div>
-
-        <div class="absolute -left-20 -bottom-24
-                    w-56 h-56
-                    rounded-full
-                    bg-white/5">
-        </div>
-
+        <div class="absolute -right-16 -top-20 w-56 h-56 rounded-full bg-white/10"></div>
+        <div class="absolute -left-20 -bottom-24 w-56 h-56 rounded-full bg-white/5"></div>
 
         <div class="relative z-10 p-5 sm:p-6">
+            <div class="grid lg:grid-cols-[1fr_auto] items-center gap-5">
 
-            <div class="grid lg:grid-cols-[1fr_auto]
-                        items-center gap-5">
-
-
-                {{-- ================= WAKTU ================= --}}
+                {{-- WAKTU --}}
                 <div>
-
                     <div class="flex items-center gap-2 mb-1">
-
-                        <span class="w-2 h-2
-                                     rounded-full
-                                     bg-emerald-300">
-                        </span>
-
-                        <p id="tanggal"
-                           class="text-purple-100
-                                  text-sm
-                                  sm:text-base
-                                  font-medium">
-                        </p>
-
+                        <span class="w-2 h-2 rounded-full bg-emerald-300"></span>
+                        <p id="tanggal" class="text-purple-100 text-sm sm:text-base font-medium"></p>
                     </div>
 
-
-                    <div id="jam"
-                         class="text-4xl
-                                sm:text-5xl
-                                lg:text-6xl
-                                font-extrabold
-                                text-white
-                                tracking-tight">
+                    <div id="jam" class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white tracking-tight">
                         00:00:00
                     </div>
-
                 </div>
 
-                {{-- ================= STATUS ================= --}}
+                {{-- STATUS --}}
                 <div class="lg:text-right">
-
-                    <p class="text-purple-100
-                              text-xs
-                              sm:text-sm
-                              mb-2">
-
+                    <p class="text-purple-100 text-xs sm:text-sm mb-2">
                         Status kehadiran
-
                     </p>
 
-
-                    <div class="inline-flex
-                                items-center
-                                gap-2
-                                px-4
-                                py-2
-                                rounded-full
-                                bg-white/10
-                                border border-white/10
-                                text-white
-                                text-sm
-                                font-semibold">
-
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10 text-white text-sm font-semibold">
                         @if(!$absensiHariIni)
-
-                            <span class="w-2 h-2
-                                         rounded-full
-                                         bg-amber-300">
-                            </span>
-
+                            <span class="w-2 h-2 rounded-full bg-amber-300"></span>
                             Belum Absen
-
                         @elseif(!$absensiHariIni->jam_pulang)
-
-                            <span class="w-2 h-2
-                                         rounded-full
-                                         bg-purple-300">
-                            </span>
-
+                            <span class="w-2 h-2 rounded-full bg-purple-300"></span>
                             Sudah Absen Masuk
-
                         @else
-
-                            <span class="w-2 h-2
-                                         rounded-full
-                                         bg-emerald-300">
-                            </span>
-
+                            <span class="w-2 h-2 rounded-full bg-emerald-300"></span>
                             Sudah Absen Lengkap
-
                         @endif
-
                     </div>
-
                 </div>
 
             </div>
-
         </div>
 
     </div>
-
 
 
     {{-- =========================================================
@@ -216,332 +95,107 @@
     ========================================================== --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-7">
 
+        {{-- =================== ABSEN MASUK =================== --}}
+        <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
 
-        {{-- =====================================================
-            ABSEN MASUK
-        ====================================================== --}}
-        <div class="es-card p-5 sm:p-6">
-
-            {{-- HEADER --}}
             <div class="flex items-start gap-4">
 
-                <div class="w-11 h-11
-                            rounded-xl
-                            bg-purple-50
-                            text-purple-600
-                            flex items-center
-                            justify-center
-                            shrink-0">
-
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                         fill="none"
-                         viewBox="0 0 24 24"
-                         stroke-width="1.8"
-                         stroke="currentColor"
-                         class="w-6 h-6">
-
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
+                <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                         stroke-width="1.8" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round"
                               d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6A2.25 2.25 0 005.25 5.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l3 3m0 0l-3 3m3-3H3"/>
-
                     </svg>
-
                 </div>
 
-
                 <div>
-
-                    <h3 class="font-bold text-lg text-slate-900">
-                        Absen Masuk
-                    </h3>
-
-                    <p class="text-sm text-slate-400 mt-1">
-                        Catat waktu kedatangan kamu.
-                    </p>
-
+                    <h3 class="font-bold text-lg text-slate-900">Absen Masuk</h3>
+                    <p class="text-sm text-slate-400 mt-1">Catat waktu kedatangan kamu.</p>
                 </div>
 
             </div>
 
-
-
-            {{-- =================================================
-                FORM MASUK
-            ================================================== --}}
             @if(!$absensiHariIni)
 
-                <form id="formAbsenMasuk"
-                      action="{{ url('/absensi/masuk') }}"
-                      method="POST"
-                      enctype="multipart/form-data">
-
+                <form id="formAbsenMasuk" action="{{ url('/absensi/masuk') }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
-
-                    {{-- ================= SHIFT ================= --}}
+                    {{-- SHIFT --}}
                     <div class="mt-6">
-
-                        <label for="shift"
-                               class="block text-sm
-                                      font-semibold
-                                      text-slate-700
-                                      mb-2">
-
+                        <label for="shift" class="block text-sm font-semibold text-slate-700 mb-2">
                             Shift Kerja
-
                         </label>
-
-
-                        <select id="shift"
-                                name="shift"
-                                required
-                                class="w-full
-                                       rounded-xl
-                                       border border-slate-200
-                                       bg-white
-                                       px-4 py-3
-                                       text-sm
-                                       text-slate-700
-                                       outline-none
-                                       transition
-                                       focus:border-purple-500
-                                       focus:ring-2
-                                       focus:ring-purple-100">
-
-                            <option value="">
-                                Pilih shift
-                            </option>
-
-                            <option value="pagi">
-                                Shift Pagi
-                            </option>
-
-                            <option value="malam">
-                                Shift Malam
-                            </option>
-
+                        <select id="shift" name="shift" required
+                                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
+                            <option value="">Pilih shift</option>
+                            <option value="pagi">Shift Pagi</option>
+                            <option value="malam">Shift Malam</option>
                         </select>
-
                     </div>
 
-                    {{-- ================= LOKASI ================= --}}
-                    <div class="mt-5
-                                rounded-xl
-                                bg-slate-50
-                                border border-slate-100
-                                p-4">
-
-                        <p class="text-xs
-                                  uppercase
-                                  tracking-wider
-                                  font-semibold
-                                  text-slate-400">
-
+                    {{-- LOKASI --}}
+                    <div class="mt-5 rounded-xl bg-slate-50 border border-slate-100 p-4">
+                        <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">
                             Lokasi Kantor
-
+                        </p>
+                        <p class="text-sm text-slate-600 leading-relaxed mt-2">
+                            Jl. Qurata Aini No.96, Nunang Antara, Kec. Bebesen, Kabupaten Aceh Tengah, Aceh 24519
                         </p>
 
-
-                        <p class="text-sm
-                                  text-slate-600
-                                  leading-relaxed
-                                  mt-2">
-
-                            Jl. Qurata Aini No.96,
-                            Nunang Antara,
-                            Kec. Bebesen,
-                            Kabupaten Aceh Tengah,
-                            Aceh 24519
-
-                        </p>
-
-
-                        {{-- STATUS LOKASI --}}
-                        <div id="statusLokasiMasuk"
-                             class="mt-3
-                                    flex items-start
-                                    gap-2
-                                    text-sm
-                                    text-slate-400">
-
+                        <div id="statusLokasiMasuk" class="mt-3 flex items-start gap-2 text-sm text-slate-400">
                             <span>📍</span>
-
-                            <span>
-                                Lokasi belum diambil
-                            </span>
-
+                            <span>Lokasi belum diambil</span>
                         </div>
 
-
-                        {{-- TOMBOL LOKASI --}}
-                        <button type="button"
-                                id="btnLokasiMasuk"
-                                class="w-full
-                                       mt-3
-                                       rounded-xl
-                                       border
-                                       border-purple-100
-                                       bg-purple-50
-                                       text-purple-600
-                                       py-2.5
-                                       text-sm
-                                       font-semibold
-                                       transition
-                                       hover:bg-purple-100">
-
+                        <button type="button" id="btnLokasiMasuk"
+                                class="w-full mt-3 rounded-xl border border-purple-100 bg-purple-50 text-purple-600 py-2.5 text-sm font-semibold transition hover:bg-purple-100">
                             📍 Ambil Lokasi
-
                         </button>
-
                     </div>
 
+                    <input type="hidden" name="latitude" id="latitudeMasuk">
+                    <input type="hidden" name="longitude" id="longitudeMasuk">
 
-                    {{-- INPUT LOCATION --}}
-                    <input type="hidden"
-                           name="latitude"
-                           id="latitudeMasuk">
-
-                    <input type="hidden"
-                           name="longitude"
-                           id="longitudeMasuk">
-
-
-
-                    {{-- ================= FOTO ================= --}}
+                    {{-- FOTO --}}
                     <div class="mt-5">
-
-                        <label class="block text-sm
-                                      font-semibold
-                                      text-slate-700
-                                      mb-2">
-
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">
                             Foto Absensi
-
                         </label>
 
-
-                        {{-- PREVIEW --}}
-                        <div id="previewFotoMasuk"
-                             class="hidden
-                                    mb-3
-                                    rounded-xl
-                                    overflow-hidden
-                                    border
-                                    border-slate-200
-                                    bg-slate-50">
-
-                            <img id="gambarMasuk"
-                                 src=""
-                                 alt="Preview foto absensi"
-                                 class="w-full
-                                        max-h-64
-                                        object-cover">
-
+                        <div id="previewFotoMasuk" class="hidden mb-3 rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                            <img id="gambarMasuk" src="" alt="Preview foto absensi" class="w-full max-h-64 object-cover">
                         </div>
 
+                        <input type="file" id="foto_masuk" name="foto_masuk" accept="image/*" class="hidden">
 
-                        {{-- FILE INPUT TERSEMBUNYI --}}
-                        <input type="file"
-                               id="foto_masuk"
-                               name="foto_masuk"
-                               accept="image/*"
-                               class="hidden">
-
-
-                        {{-- TOMBOL FOTO --}}
-                        <button type="button"
-                                id="btnFotoMasuk"
-                                disabled
-                                class="w-full
-                                       rounded-xl
-                                       border
-                                       border-purple-100
-                                       bg-purple-50
-                                       text-purple-600
-                                       py-3
-                                       text-sm
-                                       font-semibold
-                                       transition
-                                       hover:bg-purple-100
-                                       disabled:opacity-50
-                                       disabled:cursor-not-allowed
-                                       disabled:hover:bg-purple-50">
-
+                        <button type="button" id="btnFotoMasuk" disabled
+                                class="w-full rounded-xl border border-purple-100 bg-purple-50 text-purple-600 py-3 text-sm font-semibold transition hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-purple-50">
                             📷 Ambil Foto
-
                         </button>
 
-
-                        <p id="keteranganFotoMasuk"
-                           class="text-xs
-                                  text-slate-400
-                                  mt-2">
-
+                        <p id="keteranganFotoMasuk" class="text-xs text-slate-400 mt-2">
                             Ambil lokasi terlebih dahulu sebelum mengambil foto.
-
                         </p>
 
-
-                        {{-- FOTO ULANG --}}
-                        <button type="button"
-                                id="btnFotoUlangMasuk"
-                                class="hidden
-                                       w-full
-                                       mt-2
-                                       text-sm
-                                       text-purple-600
-                                       font-semibold
-                                       hover:text-purple-700">
-
+                        <button type="button" id="btnFotoUlangMasuk"
+                                class="hidden w-full mt-2 text-sm text-purple-600 font-semibold hover:text-purple-700">
                             ↻ Ambil Foto Ulang
-
                         </button>
-
                     </div>
 
-
-
-                    {{-- ================= BUTTON ABSEN ================= --}}
-                    <button type="submit"
-                            id="btnAbsenMasuk"
-                            disabled
-                            class="w-full
-                                   mt-5
-                                   bg-purple-600
-                                   hover:bg-purple-700
-                                   disabled:bg-slate-200
-                                   disabled:text-slate-400
-                                   disabled:cursor-not-allowed
-                                   text-white
-                                   py-3.5
-                                   rounded-xl
-                                   font-semibold
-                                   transition
-                                   shadow-lg
-                                   shadow-purple-600/10">
-
+                    {{-- BUTTON ABSEN --}}
+                    <button type="submit" id="btnAbsenMasuk" disabled
+                            class="w-full mt-5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-semibold transition shadow-lg shadow-purple-600/10">
                         ✓ &nbsp; Absen Masuk
-
                     </button>
 
                 </form>
 
-
             @else
 
-                <button type="button"
-                        disabled
-                        class="w-full
-                               mt-6
-                               bg-slate-100
-                               text-slate-400
-                               py-3.5
-                               rounded-xl
-                               font-semibold
-                               cursor-not-allowed">
-
+                <button type="button" disabled
+                        class="w-full mt-6 bg-slate-100 text-slate-400 py-3.5 rounded-xl font-semibold cursor-not-allowed">
                     ✓ &nbsp; Sudah Absen Masuk
-
                 </button>
 
             @endif
@@ -549,324 +203,104 @@
         </div>
 
 
+        {{-- =================== ABSEN PULANG =================== --}}
+        <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
 
-        {{-- =====================================================
-            ABSEN PULANG
-        ====================================================== --}}
-        <div class="es-card p-5 sm:p-6">
-
-            {{-- HEADER --}}
             <div class="flex items-start gap-4">
 
-                <div class="w-11 h-11
-                            rounded-xl
-                            bg-slate-100
-                            text-slate-500
-                            flex items-center
-                            justify-center
-                            shrink-0">
-
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                         fill="none"
-                         viewBox="0 0 24 24"
-                         stroke-width="1.8"
-                         stroke="currentColor"
-                         class="w-6 h-6">
-
-                        <path stroke-linecap="round"
-                              stroke-linejoin="round"
+                <div class="w-11 h-11 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                         stroke-width="1.8" stroke="currentColor" class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round"
                               d="M8.25 9V5.25A2.25 2.25 0 0110.5 3h6a2.25 2.25 0 012.25 2.25v13.5A2.25 2.25 0 0116.5 21h-6a2.25 2.25 0 01-2.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h9"/>
-
                     </svg>
-
                 </div>
 
-
                 <div>
-
-                    <h3 class="font-bold text-lg text-slate-900">
-                        Absen Pulang
-                    </h3>
-
-                    <p class="text-sm text-slate-400 mt-1">
-                        Catat waktu kepulangan kamu.
-                    </p>
-
+                    <h3 class="font-bold text-lg text-slate-900">Absen Pulang</h3>
+                    <p class="text-sm text-slate-400 mt-1">Catat waktu kepulangan kamu.</p>
                 </div>
 
             </div>
 
-
-
-            {{-- =================================================
-                SUDAH MASUK, BELUM PULANG
-            ================================================== --}}
             @if($absensiHariIni && !$absensiHariIni->jam_pulang)
 
-                <form id="formAbsenPulang"
-                      action="{{ url('/absensi/pulang') }}"
-                      method="POST"
-                      enctype="multipart/form-data">
-
+                <form id="formAbsenPulang" action="{{ url('/absensi/pulang') }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
-
-                    {{-- ================= LOKASI ================= --}}
-                    <div class="mt-6
-                                rounded-xl
-                                bg-slate-50
-                                border border-slate-100
-                                p-4">
-
-                        <p class="text-xs
-                                  uppercase
-                                  tracking-wider
-                                  font-semibold
-                                  text-slate-400">
-
+                    {{-- LOKASI --}}
+                    <div class="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-4">
+                        <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">
                             Lokasi Kantor
-
+                        </p>
+                        <p class="text-sm text-slate-600 leading-relaxed mt-2">
+                            Jl. Qurata Aini No.96, Nunang Antara, Kec. Bebesen, Kabupaten Aceh Tengah, Aceh 24519
                         </p>
 
-
-                        <p class="text-sm
-                                  text-slate-600
-                                  leading-relaxed
-                                  mt-2">
-
-                            Jl. Qurata Aini No.96,
-                            Nunang Antara,
-                            Kec. Bebesen,
-                            Kabupaten Aceh Tengah,
-                            Aceh 24519
-
-                        </p>
-
-
-                        {{-- STATUS LOKASI --}}
-                        <div id="statusLokasiPulang"
-                             class="mt-3
-                                    flex items-start
-                                    gap-2
-                                    text-sm
-                                    text-slate-400">
-
+                        <div id="statusLokasiPulang" class="mt-3 flex items-start gap-2 text-sm text-slate-400">
                             <span>📍</span>
-
-                            <span>
-                                Lokasi belum diambil
-                            </span>
-
+                            <span>Lokasi belum diambil</span>
                         </div>
 
-
-                        <button type="button"
-                                id="btnLokasiPulang"
-                                class="w-full
-                                       mt-3
-                                       rounded-xl
-                                       border
-                                       border-purple-100
-                                       bg-purple-50
-                                       text-purple-600
-                                       py-2.5
-                                       text-sm
-                                       font-semibold
-                                       transition
-                                       hover:bg-purple-100">
-
+                        <button type="button" id="btnLokasiPulang"
+                                class="w-full mt-3 rounded-xl border border-purple-100 bg-purple-50 text-purple-600 py-2.5 text-sm font-semibold transition hover:bg-purple-100">
                             📍 Ambil Lokasi
-
                         </button>
-
                     </div>
 
+                    <input type="hidden" name="latitude" id="latitudePulang">
+                    <input type="hidden" name="longitude" id="longitudePulang">
 
-                    {{-- INPUT LOCATION --}}
-                    <input type="hidden"
-                           name="latitude"
-                           id="latitudePulang">
-
-                    <input type="hidden"
-                           name="longitude"
-                           id="longitudePulang">
-
-
-
-                    {{-- ================= FOTO ================= --}}
+                    {{-- FOTO --}}
                     <div class="mt-5">
-
-                        <label class="block text-sm
-                                      font-semibold
-                                      text-slate-700
-                                      mb-2">
-
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">
                             Foto Absensi
-
                         </label>
 
-
-                        {{-- PREVIEW --}}
-                        <div id="previewFotoPulang"
-                             class="hidden
-                                    mb-3
-                                    rounded-xl
-                                    overflow-hidden
-                                    border
-                                    border-slate-200
-                                    bg-slate-50">
-
-                            <img id="gambarPulang"
-                                 src=""
-                                 alt="Preview foto pulang"
-                                 class="w-full
-                                        max-h-64
-                                        object-cover">
-
+                        <div id="previewFotoPulang" class="hidden mb-3 rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                            <img id="gambarPulang" src="" alt="Preview foto pulang" class="w-full max-h-64 object-cover">
                         </div>
 
+                        <input type="file" id="foto_pulang" name="foto_pulang" accept="image/*" class="hidden">
 
-                        <input type="file"
-                               id="foto_pulang"
-                               name="foto_pulang"
-                               accept="image/*"
-                               class="hidden">
-
-
-                        <button type="button"
-                                id="btnFotoPulang"
-                                disabled
-                                class="w-full
-                                       rounded-xl
-                                       border
-                                       border-purple-100
-                                       bg-purple-50
-                                       text-purple-600
-                                       py-3
-                                       text-sm
-                                       font-semibold
-                                       transition
-                                       hover:bg-purple-100
-                                       disabled:opacity-50
-                                       disabled:cursor-not-allowed
-                                       disabled:hover:bg-purple-50">
-
+                        <button type="button" id="btnFotoPulang" disabled
+                                class="w-full rounded-xl border border-purple-100 bg-purple-50 text-purple-600 py-3 text-sm font-semibold transition hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-purple-50">
                             📷 Ambil Foto
-
                         </button>
 
-
-                        <p id="keteranganFotoPulang"
-                           class="text-xs
-                                  text-slate-400
-                                  mt-2">
-
+                        <p id="keteranganFotoPulang" class="text-xs text-slate-400 mt-2">
                             Ambil lokasi terlebih dahulu sebelum mengambil foto.
-
                         </p>
 
-
-                        <button type="button"
-                                id="btnFotoUlangPulang"
-                                class="hidden
-                                       w-full
-                                       mt-2
-                                       text-sm
-                                       text-purple-600
-                                       font-semibold
-                                       hover:text-purple-700">
-
+                        <button type="button" id="btnFotoUlangPulang"
+                                class="hidden w-full mt-2 text-sm text-purple-600 font-semibold hover:text-purple-700">
                             ↻ Ambil Foto Ulang
-
                         </button>
-
                     </div>
 
-
-
-                    {{-- BUTTON --}}
-                    <button type="submit"
-                            id="btnAbsenPulang"
-                            disabled
-                            class="w-full
-                                   mt-5
-                                   bg-slate-800
-                                   hover:bg-slate-900
-                                   disabled:bg-slate-200
-                                   disabled:text-slate-400
-                                   disabled:cursor-not-allowed
-                                   text-white
-                                   py-3.5
-                                   rounded-xl
-                                   font-semibold
-                                   transition">
-
+                    <button type="submit" id="btnAbsenPulang" disabled
+                            class="w-full mt-5 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-semibold transition">
                         Absen Pulang
-
                     </button>
 
                 </form>
 
-
-
-            {{-- =================================================
-                BELUM MASUK
-            ================================================== --}}
             @elseif(!$absensiHariIni)
 
-                <div class="mt-6
-                            rounded-xl
-                            bg-slate-50
-                            border border-slate-100
-                            p-5
-                            text-center">
-
-                    <p class="text-sm
-                              text-slate-400">
-
-                        Silakan lakukan absen masuk
-                        terlebih dahulu.
-
-                    </p>
-
+                <div class="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-5 text-center">
+                    <p class="text-sm text-slate-400">Silakan lakukan absen masuk terlebih dahulu.</p>
                 </div>
 
-
-                <button type="button"
-                        disabled
-                        class="w-full
-                               mt-4
-                               bg-slate-100
-                               text-slate-400
-                               py-3.5
-                               rounded-xl
-                               font-semibold
-                               cursor-not-allowed">
-
+                <button type="button" disabled
+                        class="w-full mt-4 bg-slate-100 text-slate-400 py-3.5 rounded-xl font-semibold cursor-not-allowed">
                     Absen Pulang
-
                 </button>
 
-
-
-            {{-- =================================================
-                SUDAH PULANG
-            ================================================== --}}
             @else
 
-                <button type="button"
-                        disabled
-                        class="w-full
-                               mt-6
-                               bg-emerald-50
-                               text-emerald-600
-                               py-3.5
-                               rounded-xl
-                               font-semibold
-                               cursor-not-allowed">
-
+                <button type="button" disabled
+                        class="w-full mt-6 bg-emerald-50 text-emerald-600 py-3.5 rounded-xl font-semibold cursor-not-allowed">
                     ✓ &nbsp; Sudah Absen Pulang
-
                 </button>
 
             @endif
@@ -876,158 +310,78 @@
     </div>
 
 
-
     {{-- =========================================================
         INFORMASI HARI INI
     ========================================================== --}}
-    <div class="es-card p-5 sm:p-6 mb-7">
+    <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm mb-7">
 
         <div class="mb-5">
-
-            <h3 class="font-bold text-lg text-slate-900">
-                Informasi Kehadiran
-            </h3>
-
-            <p class="text-sm text-slate-400 mt-1">
-                Ringkasan absensi kamu hari ini.
-            </p>
-
+            <h3 class="font-bold text-lg text-slate-900">Informasi Kehadiran</h3>
+            <p class="text-sm text-slate-400 mt-1">Ringkasan absensi kamu hari ini.</p>
         </div>
-
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-
             {{-- JAM MASUK --}}
-            <div class="rounded-xl
-                        bg-slate-50
-                        border border-slate-100
-                        p-4">
-
-                <p class="text-xs
-                          uppercase
-                          tracking-wider
-                          text-slate-400
-                          font-semibold">
-
+            <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">
                     Jam Masuk
-
                 </p>
-
-                <p class="text-2xl
-                          font-bold
-                          text-slate-900
-                          mt-2">
-
+                <p class="text-2xl font-bold text-slate-900 mt-2">
                     {{ $absensiHariIni?->jam_masuk
                         ? \Carbon\Carbon::parse($absensiHariIni->jam_masuk)->format('H:i')
                         : '--:--' }}
-
                 </p>
 
                 @if($absensiHariIni && $absensiHariIni->jarak !== null)
-
                     <p class="text-xs text-slate-500 mt-2">
                         📍 {{ number_format($absensiHariIni->jarak, 0) }} m dari kantor
                     </p>
-
                     <p class="text-[11px] text-slate-400 mt-0.5">
-                        {{ number_format($absensiHariIni->latitude, 6) }},
-                        {{ number_format($absensiHariIni->longitude, 6) }}
+                        {{ number_format($absensiHariIni->latitude, 6) }}, {{ number_format($absensiHariIni->longitude, 6) }}
                     </p>
-
                 @endif
-
             </div>
 
-
             {{-- JAM PULANG --}}
-            <div class="rounded-xl
-                        bg-slate-50
-                        border border-slate-100
-                        p-4">
-
-                <p class="text-xs
-                          uppercase
-                          tracking-wider
-                          text-slate-400
-                          font-semibold">
-
+            <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">
                     Jam Pulang
-
                 </p>
-
-                <p class="text-2xl
-                          font-bold
-                          text-slate-900
-                          mt-2">
-
+                <p class="text-2xl font-bold text-slate-900 mt-2">
                     {{ $absensiHariIni?->jam_pulang
                         ? \Carbon\Carbon::parse($absensiHariIni->jam_pulang)->format('H:i')
                         : '--:--' }}
-
                 </p>
 
                 @if($absensiHariIni && $absensiHariIni->jarak_pulang !== null)
-
                     <p class="text-xs text-slate-500 mt-2">
                         📍 {{ number_format($absensiHariIni->jarak_pulang, 0) }} m dari kantor
                     </p>
-
                     <p class="text-[11px] text-slate-400 mt-0.5">
-                        {{ number_format($absensiHariIni->latitude_pulang, 6) }},
-                        {{ number_format($absensiHariIni->longitude_pulang, 6) }}
+                        {{ number_format($absensiHariIni->latitude_pulang, 6) }}, {{ number_format($absensiHariIni->longitude_pulang, 6) }}
                     </p>
-
                 @endif
-
             </div>
 
             {{-- SHIFT --}}
-            <div class="rounded-xl 
-                    bg-slate-50 
-                    border border-slate-100 
-                    p-4"> 
-
-            <p class="text-xs 
-                    uppercase 
-                    tracking-wider 
-                    text-slate-400 
-                    font-semibold"> 
-
-                Shift 
-
-            </p> 
-
-            <p class="text-lg 
-                    font-bold 
-                    text-purple-600 
-                    mt-3"> 
-
-                @if($absensiHariIni)
-
-                    @if($absensiHariIni->shift === 'malam')
-
-                        Shift Malam
-
-                    @elseif($absensiHariIni->shift === 'pagi')
-
-                        Shift Pagi
-
+            <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                    Shift
+                </p>
+                <p class="text-lg font-bold text-purple-600 mt-3">
+                    @if($absensiHariIni)
+                        @if($absensiHariIni->shift === 'malam')
+                            Shift Malam
+                        @elseif($absensiHariIni->shift === 'pagi')
+                            Shift Pagi
+                        @else
+                            Belum dipilih
+                        @endif
                     @else
-
                         Belum dipilih
-
                     @endif
-
-                @else
-
-                    Belum dipilih
-
-                @endif
-
-            </p>
-
+                </p>
             </div>
 
         </div>
@@ -1038,164 +392,72 @@
     {{-- =========================================================
         CATATAN
     ========================================================== --}}
-    <div class="rounded-2xl
-                bg-purple-50
-                border border-purple-100
-                p-5 sm:p-6">
+    <div class="rounded-2xl bg-purple-50 border border-purple-100 p-5 sm:p-6">
 
         <div class="flex gap-3">
 
-            <div class="text-purple-600 mt-0.5">
-                ⓘ
-            </div>
+            <div class="text-purple-600 mt-0.5">ⓘ</div>
 
             <div>
-
-                <p class="font-semibold text-purple-900">
-                    Informasi
-                </p>
-
-                <p class="text-sm
-                          text-purple-700
-                          mt-1
-                          leading-relaxed">
-
+                <p class="font-semibold text-purple-900">Informasi</p>
+                <p class="text-sm text-purple-700 mt-1 leading-relaxed">
                     Pastikan melakukan absensi sesuai dengan shift
                     dan berada di dalam radius kantor maksimal
                     {{ $radiusMaksimal }} meter.
-
                 </p>
-
             </div>
 
         </div>
 
     </div>
-
 
 
     {{-- =========================================================
         MODAL KAMERA
     ========================================================== --}}
-    <div id="modalKamera"
-         class="hidden fixed inset-0 z-[999]
-                bg-black/70
-                items-center justify-center
-                p-4">
+    <div id="modalKamera" class="hidden fixed inset-0 z-[999] bg-black/70 items-center justify-center p-4">
 
-        <div class="w-full max-w-[280px] sm:max-w-xs
-                    bg-white
-                    rounded-2xl
-                    overflow-hidden
-                    shadow-2xl
-                    max-h-[92vh]
-                    flex flex-col">
+        <div class="w-full max-w-[280px] sm:max-w-xs bg-white rounded-2xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col">
 
             {{-- HEADER --}}
-            <div class="flex items-center
-                        justify-between
-                        px-4 py-3
-                        border-b
-                        border-slate-100
-                        shrink-0">
-
+            <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
                 <div>
-
-                    <h3 class="text-sm font-bold text-slate-900">
-                        Ambil Foto
-                    </h3>
-
-                    <p class="text-[11px] text-slate-400 mt-0.5">
-                        Pastikan wajah terlihat jelas.
-                    </p>
-
+                    <h3 class="text-sm font-bold text-slate-900">Ambil Foto</h3>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Pastikan wajah terlihat jelas.</p>
                 </div>
 
-
-                <button type="button"
-                        id="btnTutupKamera"
-                        class="w-8 h-8
-                               rounded-full
-                               bg-slate-100
-                               text-slate-500
-                               flex items-center
-                               justify-center
-                               text-base
-                               shrink-0">
-
+                <button type="button" id="btnTutupKamera"
+                        class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-base shrink-0">
                     ×
-
                 </button>
-
             </div>
-
 
             {{-- VIDEO --}}
             <div class="relative bg-black shrink-0">
+                <video id="videoKamera" autoplay playsinline muted
+                       class="w-full aspect-[3/4] max-h-[55vh] object-cover"></video>
+                <canvas id="canvasKamera" class="hidden"></canvas>
 
-                <video id="videoKamera"
-                       autoplay
-                       playsinline
-                       muted
-                       class="w-full
-                              aspect-[3/4]
-                              max-h-[55vh]
-                              object-cover">
-                </video>
-
-                <canvas id="canvasKamera"
-                        class="hidden">
-                </canvas>
-
-                {{-- PRATINJAU WATERMARK --}}
-                <div class="pointer-events-none absolute inset-x-0 bottom-0
-                            bg-gradient-to-t from-black/75 to-transparent
-                            px-3 py-2">
-
-                    <p id="watermarkLabel"
-                       class="text-[10px] font-bold tracking-wide text-purple-300">
+                <div class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 py-2">
+                    <p id="watermarkLabel" class="text-[10px] font-bold tracking-wide text-purple-300">
                         EASY SYSTEM
                     </p>
-
-                    <p id="watermarkWaktu"
-                       class="text-xs font-bold text-white leading-tight">
-                        --
-                    </p>
-
-                    <p id="watermarkJarak"
-                       class="text-[10px] text-slate-200 leading-tight">
-                        Lokasi belum diambil
-                    </p>
-
+                    <p id="watermarkWaktu" class="text-xs font-bold text-white leading-tight">--</p>
+                    <p id="watermarkJarak" class="text-[10px] text-slate-200 leading-tight">Lokasi belum diambil</p>
                 </div>
-
             </div>
-
 
             {{-- BUTTON --}}
             <div class="p-3 shrink-0">
-
-                <button type="button"
-                        id="btnAmbilKamera"
-                        class="w-full
-                               bg-purple-600
-                               hover:bg-purple-700
-                               text-white
-                               py-2.5
-                               rounded-xl
-                               text-sm
-                               font-semibold">
-
+                <button type="button" id="btnAmbilKamera"
+                        class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl text-sm font-semibold">
                     📷 Ambil Foto
-
                 </button>
-
             </div>
 
         </div>
 
     </div>
-
 
 
     {{-- =========================================================
@@ -1211,13 +473,10 @@
 
         document.addEventListener('DOMContentLoaded', function () {
 
-
             /* =====================================================
-               JAM REALTIME (header + label watermark)
+               FORMAT JAM & TANGGAL
             ====================================================== */
-
             function formatJamTanggal(pakaiDetik) {
-
                 const now = new Date();
 
                 const jam = now.toLocaleTimeString('id-ID', {
@@ -1239,7 +498,6 @@
             }
 
             function updateClock() {
-
                 const { jam, tanggal } = formatJamTanggal(true);
 
                 const jamElement = document.getElementById('jam');
@@ -1257,11 +515,9 @@
 
 
             /* =====================================================
-               HITUNG JARAK (rumus Haversine, SAMA PERSIS dengan backend)
+               HITUNG JARAK (Haversine)
             ====================================================== */
-
             function hitungJarakMeter(lat1, lon1, lat2, lon2) {
-
                 const R = 6371000;
                 const toRad = (deg) => (deg * Math.PI) / 180;
 
@@ -1279,9 +535,8 @@
 
 
             /* =====================================================
-               STATE LOKASI (dipakai untuk watermark foto)
+               STATE LOKASI
             ====================================================== */
-
             const lokasiState = {
                 masuk:  { lat: null, lng: null, jarak: null },
                 pulang: { lat: null, lng: null, jarak: null }
@@ -1291,27 +546,23 @@
             /* =====================================================
                VARIABEL KAMERA
             ====================================================== */
-
             const modalKamera     = document.getElementById('modalKamera');
             const videoKamera     = document.getElementById('videoKamera');
             const canvasKamera    = document.getElementById('canvasKamera');
             const btnAmbilKamera  = document.getElementById('btnAmbilKamera');
             const btnTutupKamera  = document.getElementById('btnTutupKamera');
 
-            const watermarkWaktuEl = document.getElementById('watermarkWaktu');
             const watermarkJarakEl = document.getElementById('watermarkJarak');
 
             let streamKamera = null;
             let targetFoto = null;
-            let jenisAktif = null; // 'masuk' atau 'pulang'
+            let jenisAktif = null;
 
 
             /* =====================================================
-               UPDATE PRATINJAU WATERMARK DI DALAM MODAL
+               UPDATE PRATINJAU WATERMARK
             ====================================================== */
-
             function updatePratinjauWatermark() {
-
                 if (!watermarkJarakEl || !jenisAktif) return;
 
                 const data = lokasiState[jenisAktif];
@@ -1332,26 +583,18 @@
             /* =====================================================
                BUKA / TUTUP KAMERA
             ====================================================== */
-
             async function bukaKamera(target, jenis) {
-
                 targetFoto = target;
                 jenisAktif = jenis;
 
                 updatePratinjauWatermark();
 
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-
-                    alert(
-                        'Kamera tidak didukung oleh browser ini. ' +
-                        'Silakan gunakan browser yang mendukung kamera.'
-                    );
-
+                    alert('Kamera tidak didukung oleh browser ini. Silakan gunakan browser yang mendukung kamera.');
                     return;
                 }
 
                 try {
-
                     streamKamera = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: 'user' },
                         audio: false
@@ -1363,20 +606,13 @@
                     modalKamera.classList.add('flex');
 
                     updateClock();
-
                 } catch (error) {
-
                     console.error(error);
-
-                    alert(
-                        'Kamera tidak dapat dibuka. ' +
-                        'Pastikan izin kamera sudah diberikan pada browser.'
-                    );
+                    alert('Kamera tidak dapat dibuka. Pastikan izin kamera sudah diberikan pada browser.');
                 }
             }
 
             function tutupKamera() {
-
                 if (streamKamera) {
                     streamKamera.getTracks().forEach((track) => track.stop());
                     streamKamera = null;
@@ -1395,11 +631,8 @@
 
             /* =====================================================
                GAMBAR WATERMARK DI ATAS FOTO
-               (tanggal, jam, koordinat, jarak dari kantor)
             ====================================================== */
-
             function gambarWatermark(context, width, height, jenis) {
-
                 const data = lokasiState[jenis] || {};
                 const { jam, tanggal } = formatJamTanggal(true);
 
@@ -1416,7 +649,6 @@
 
                 const label = jenis === 'pulang' ? 'ABSEN PULANG' : 'ABSEN MASUK';
 
-                // Bar gradasi gelap di bagian bawah foto
                 const barHeight = Math.max(90, Math.round(height * 0.22));
 
                 const gradient = context.createLinearGradient(0, height - barHeight, 0, height);
@@ -1426,7 +658,6 @@
                 context.fillStyle = gradient;
                 context.fillRect(0, height - barHeight, width, barHeight);
 
-                // Ukuran teks menyesuaikan lebar foto (biar tetap pas di resolusi kamera apapun)
                 const paddingX  = Math.round(width * 0.04);
                 const fontLabel = Math.max(11, Math.round(width * 0.026));
                 const fontMain  = Math.max(15, Math.round(width * 0.036));
@@ -1460,9 +691,7 @@
             /* =====================================================
                AMBIL FOTO DARI KAMERA
             ====================================================== */
-
             if (btnAmbilKamera) {
-
                 btnAmbilKamera.addEventListener('click', function () {
 
                     if (!targetFoto) return;
@@ -1503,7 +732,6 @@
                         const keterangan = targetFoto.dataset.keterangan;
 
                         if (preview && image) {
-
                             document.getElementById(image).src = URL.createObjectURL(file);
                             document.getElementById(preview).classList.remove('hidden');
                         }
@@ -1530,7 +758,6 @@
             /* =====================================================
                SETUP FOTO MASUK & PULANG
             ====================================================== */
-
             const fotoMasuk         = document.getElementById('foto_masuk');
             const btnFotoMasuk      = document.getElementById('btnFotoMasuk');
             const btnFotoUlangMasuk = document.getElementById('btnFotoUlangMasuk');
@@ -1572,12 +799,8 @@
 
             /* =====================================================
                AMBIL LOKASI
-               (menghitung & menampilkan JARAK KE KANTOR yang sama
-               persis dengan yang dipakai backend untuk validasi)
             ====================================================== */
-
             function ambilLokasi(latitudeInput, longitudeInput, statusElement, button, jenis, btnFoto) {
-
                 return new Promise(function (resolve, reject) {
 
                     if (!navigator.geolocation) {
@@ -1665,15 +888,12 @@
 
 
             /* =====================================================
-               LOKASI MASUK
+               LOKASI MASUK & PULANG
             ====================================================== */
-
             const btnLokasiMasuk = document.getElementById('btnLokasiMasuk');
 
             if (btnLokasiMasuk) {
-
                 btnLokasiMasuk.addEventListener('click', function () {
-
                     ambilLokasi(
                         'latitudeMasuk',
                         'longitudeMasuk',
@@ -1687,17 +907,10 @@
                 });
             }
 
-
-            /* =====================================================
-               LOKASI PULANG
-            ====================================================== */
-
             const btnLokasiPulang = document.getElementById('btnLokasiPulang');
 
             if (btnLokasiPulang) {
-
                 btnLokasiPulang.addEventListener('click', function () {
-
                     ambilLokasi(
                         'latitudePulang',
                         'longitudePulang',
@@ -1715,9 +928,7 @@
             /* =====================================================
                CEK FORM MASUK / PULANG
             ====================================================== */
-
             function cekFormMasuk() {
-
                 const form = document.getElementById('formAbsenMasuk');
                 if (!form) return;
 
@@ -1731,7 +942,6 @@
             }
 
             function cekFormPulang() {
-
                 const form = document.getElementById('formAbsenPulang');
                 if (!form) return;
 
@@ -1751,13 +961,11 @@
 
 
             /* =====================================================
-               SUBMIT MASUK / PULANG (validasi terakhir di browser)
+               SUBMIT MASUK
             ====================================================== */
-
             const formMasuk = document.getElementById('formAbsenMasuk');
 
             if (formMasuk) {
-
                 formMasuk.addEventListener('submit', function (event) {
 
                     const latitude  = document.getElementById('latitudeMasuk').value;
@@ -1782,10 +990,13 @@
                 });
             }
 
+
+            /* =====================================================
+               SUBMIT PULANG
+            ====================================================== */
             const formPulang = document.getElementById('formAbsenPulang');
 
             if (formPulang) {
-
                 formPulang.addEventListener('submit', function (event) {
 
                     const latitude  = document.getElementById('latitudePulang').value;

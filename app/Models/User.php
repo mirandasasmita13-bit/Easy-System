@@ -13,10 +13,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'name',
-    'email',
+    'username',
     'password',
     'role',
+    'status',
+    'tanggal_nonaktif',
+
+    // Manajemen cuti
+    'jatah_cuti_tahunan',
     'cuti_tahunan_sebelumnya',
+    'tahun_cuti',
 ])]
 
 #[Hidden([
@@ -31,51 +37,81 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'email_verified_at'       => 'datetime',
+            'password'                => 'hashed',
+            'tanggal_nonaktif'        => 'date',
+            'jatah_cuti_tahunan'      => 'integer',
             'cuti_tahunan_sebelumnya' => 'integer',
+            'tahun_cuti'              => 'integer',
         ];
     }
 
+    // --- RELASI ---
 
-    // RELASI PROFIL
     public function profil(): HasOne
     {
         return $this->hasOne(Profil::class);
     }
 
-
-    // RELASI ABSENSI
     public function absensis(): HasMany
     {
         return $this->hasMany(Absensi::class);
     }
 
-
-    // RELASI CUTI
     public function pengajuancuti(): HasMany
     {
         return $this->hasMany(Pengajuancuti::class);
     }
 
-
-    // RELASI LUPA ABSEN
     public function pengajuanlupaabsen(): HasMany
     {
         return $this->hasMany(Pengajuanlupaabsen::class);
     }
 
-
-    // RELASI LEMBUR
     public function lembur(): HasMany
     {
         return $this->hasMany(Lembur::class);
     }
 
-
-    // RELASI SURAT
     public function pengajuansurat(): HasMany
     {
         return $this->hasMany(Pengajuansurat::class);
     }
+
+    // --- SCOPE ---
+
+    public function scopePpnpnAktif($query)
+    {
+        return $query->where('role', 'ppnpn')->where('status', 'aktif');
+    }
+
+    public function scopePpnpnSemua($query)
+    {
+        return $query->where('role', 'ppnpn');
+    }
+
+    // --- HELPER: HITUNG CUTI ---
+
+/**
+ * Total cuti tahunan yang tercatat di sistem
+ * pada tahun cuti user.
+ */
+public function cutiTahunanDiSistem(): int
+{
+    return $this->pengajuancuti()
+        ->where('jenis_cuti', 'tahunan')
+        ->whereYear('tanggal_mulai', $this->tahun_cuti)  // ← pakai tahun_cuti
+        ->sum('jumlah_hari');
+}
+
+public function sisaCutiTahunan(): int
+{
+    $terpakai = $this->cuti_tahunan_sebelumnya + $this->cutiTahunanDiSistem();
+    return max(0, $this->jatah_cuti_tahunan - $terpakai);
+}
+
+public function totalCutiTerpakai(): int
+{
+    return $this->cuti_tahunan_sebelumnya + $this->cutiTahunanDiSistem();
+}
 }

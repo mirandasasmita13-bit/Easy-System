@@ -13,7 +13,8 @@ return new class extends Migration
 
             $table->string('name');
 
-            $table->string('email')->unique();
+            // POIN 1: Email diganti username (ID login)
+            $table->string('username')->unique();
 
             $table->timestamp('email_verified_at')->nullable();
 
@@ -25,13 +26,36 @@ return new class extends Migration
                 'pegawai',
             ])->default('ppnpn');
 
+            // POIN 6: Status aktif/nonaktif
+            $table->enum('status', [
+                'aktif',
+                'nonaktif',
+            ])->default('aktif');
+
+            $table->date('tanggal_nonaktif')->nullable();
+
+            // ============================================================
+            // BARU: Manajemen cuti tahunan (untuk sistem yang mulai
+            // di tengah tahun — admin bisa input cuti yang sudah terpakai)
+            // ============================================================
+            // Total jatah cuti tahunan per tahun (biasanya 12)
+            $table->unsignedInteger('jatah_cuti_tahunan')->default(12);
+
+            // Cuti yang sudah terpakai SEBELUM sistem ini berjalan
+            // (diinput manual oleh admin saat setup awal)
+            $table->unsignedInteger('cuti_tahunan_sebelumnya')->default(0);
+
+            // Tahun berlaku (untuk auto-reset tiap Januari)
+            $table->year('tahun_cuti')->default(2026);
+            // ============================================================
+
             $table->rememberToken();
 
             $table->timestamps();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email')->primary();
+            $table->string('username')->primary();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
         });
@@ -48,8 +72,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };

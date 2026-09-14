@@ -9,39 +9,45 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('absensis', function (Blueprint $table) {
-
             $table->id();
 
-            // Pemilik absensi
             $table->foreignId('user_id')
                 ->constrained('users')
                 ->cascadeOnDelete();
 
-            // Tanggal absensi
             $table->date('tanggal');
-
-            // Shift kerja
             $table->string('shift')->nullable();
 
-            // Jam masuk dan pulang
             $table->time('jam_masuk')->nullable();
             $table->time('jam_pulang')->nullable();
 
-            // Keterangan absensi
-            // H, DL, CT, I, X, TL, IS
             $table->string('keterangan')->default('H');
 
-            // Lokasi saat melakukan absensi
+            // Untuk tandai merah kalau ada pengajuan lupa absen pending
+            $table->enum('status_approval', [
+                'normal',
+                'pending',
+            ])->default('normal');
+
+            // ====== LOKASI ABSEN MASUK ======
             $table->decimal('latitude', 10, 7)->nullable();
             $table->decimal('longitude', 10, 7)->nullable();
-
-            // Jarak user dari lokasi kantor (meter)
             $table->decimal('jarak', 8, 2)->nullable();
-            
-            // Ambil foto untuk absen
+
+            // ====== LOKASI ABSEN PULANG (BARU) ======
+            // Dipisah supaya data lokasi masuk tidak tertimpa saat pulang
+            $table->decimal('latitude_pulang', 10, 7)->nullable();
+            $table->decimal('longitude_pulang', 10, 7)->nullable();
+            $table->decimal('jarak_pulang', 8, 2)->nullable();
+
             $table->string('foto_masuk')->nullable();
             $table->string('foto_pulang')->nullable();
+
             $table->timestamps();
+
+            // Unique per user + tanggal + shift
+            // (karena 1 user bisa absen shift pagi DAN malam di hari yang sama)
+            $table->unique(['user_id', 'tanggal', 'shift'], 'absensi_unik');
         });
     }
 
@@ -49,5 +55,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('absensis');
     }
-    
 };

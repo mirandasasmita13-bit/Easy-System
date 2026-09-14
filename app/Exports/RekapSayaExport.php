@@ -5,8 +5,7 @@ namespace App\Exports;
 use App\Models\Absensi;
 use App\Models\Pengajuancuti;
 use App\Models\Pengajuanlupaabsen;
-use App\Models\PengajuanSurat;
-use App\Models\Lembur;
+use App\Models\Pengajuansurat;
 use Carbon\Carbon;
 
 use Maatwebsite\Excel\Concerns\FromArray;
@@ -21,534 +20,151 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 
 use Maatwebsite\Excel\Events\AfterSheet;
 
-
-class RekapSayaExport implements
-    FromArray,
-    WithStyles,
-    WithColumnWidths,
-    WithEvents
+class RekapSayaExport implements FromArray, WithStyles, WithColumnWidths, WithEvents
 {
     protected $user;
     protected $bulan;
     protected $tahun;
 
-    protected $jumlahTanggal = 0;
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | CONSTRUCTOR
-    |--------------------------------------------------------------------------
-    |
-    | Disamakan dengan RekapabsensiController:
-    |
-    | new RekapSayaExport($bulan, $tahun)
-    |
-    */
-
     public function __construct($bulan, $tahun)
     {
-        $this->user = auth()->user();
+        $this->user  = auth()->user();
         $this->bulan = $bulan;
         $this->tahun = $tahun;
     }
 
-
-    // ========================================================================
-    // DATA EXCEL
-    // ========================================================================
+    private function isLupaApproved($lupa): bool
+    {
+        if (!$lupa) return false;
+        $approved = ['approved', 'disetujui', 'diterima', 'setuju', 'accept', 'accepted', 'terima'];
+        foreach (['status', 'status_approval', 'status_pengajuan', 'approval_status'] as $field) {
+            if (!isset($lupa->$field)) continue;
+            if (in_array(strtolower(trim((string) $lupa->$field)), $approved, true)) return true;
+        }
+        return false;
+    }
 
     public function array(): array
     {
-        $tanggalAwal = Carbon::create(
-            $this->tahun,
-            $this->bulan,
-            1
-        )->startOfMonth();
+        $tanggalAwal  = Carbon::create($this->tahun, $this->bulan, 1)->startOfMonth();
+        $tanggalAkhir = Carbon::create($this->tahun, $this->bulan, 1)->endOfMonth();
 
-        $tanggalAkhir = Carbon::create(
-            $this->tahun,
-            $this->bulan,
-            1
-        )->endOfMonth();
-
-
-        // ====================================================================
-        // ABSENSI SAYA
-        // ====================================================================
-
-        $dataAbsensi = Absensi::where(
-            'user_id',
-            $this->user->id
-        )
-            ->whereBetween(
-                'tanggal',
-                [
-                    $tanggalAwal->format('Y-m-d'),
-                    $tanggalAkhir->format('Y-m-d'),
-                ]
-            )
+        $dataAbsensi = Absensi::where('user_id', $this->user->id)
+            ->whereBetween('tanggal', [$tanggalAwal->format('Y-m-d'), $tanggalAkhir->format('Y-m-d')])
             ->get();
 
         $absensi = [];
-
         foreach ($dataAbsensi as $item) {
-
-            $tanggalKey = Carbon::parse(
-                $item->tanggal
-            )->format('Y-m-d');
-
-            $absensi[$tanggalKey] = $item;
+            $absensi[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-
-        // ====================================================================
-        // CUTI SAYA
-        // ====================================================================
-        //
-        // PENTING:
-        // Weekend TIDAK dimasukkan ke dalam rekap cuti.
-        //
-        // Contoh:
-        // Cuti 6 hari kalender
-        // Senin - Sabtu
-        //
-        // Yang masuk sebagai CUTI:
-        // Senin, Selasa, Rabu, Kamis, Jumat
-        //
-        // Sabtu tetap LIBUR.
-        //
-        // ====================================================================
-
-        $dataCuti = Pengajuancuti::where(
-            'user_id',
-            $this->user->id
-        )
-            ->whereDate(
-                'tanggal_mulai',
-                '<=',
-                $tanggalAkhir
-            )
-            ->whereDate(
-                'tanggal_selesai',
-                '>=',
-                $tanggalAwal
-            )
+        $dataCuti = Pengajuancuti::where('user_id', $this->user->id)
+            ->whereDate('tanggal_mulai', '<=', $tanggalAkhir)
+            ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
             ->get();
 
         $cuti = [];
-
         foreach ($dataCuti as $item) {
-
-            $mulai = Carbon::parse(
-                $item->tanggal_mulai
-            );
-
-            $selesai = Carbon::parse(
-                $item->tanggal_selesai
-            );
-
+            $mulai   = Carbon::parse($item->tanggal_mulai);
+            $selesai = Carbon::parse($item->tanggal_selesai);
             while ($mulai->lte($selesai)) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | HANYA HARI KERJA
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    !$mulai->isWeekend()
-                    && $mulai->between(
-                        $tanggalAwal,
-                        $tanggalAkhir
-                    )
-                ) {
-
-                    $tanggalKey = $mulai->format('Y-m-d');
-
-                    $cuti[$tanggalKey] = $item;
+                if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
+                    $cuti[$mulai->format('Y-m-d')] = $item;
                 }
-
                 $mulai->addDay();
             }
         }
 
-
-        // ====================================================================
-        // LUPA ABSEN
-        // ====================================================================
-
-        $dataLupaAbsen = Pengajuanlupaabsen::where(
-            'user_id',
-            $this->user->id
-        )
-            ->whereBetween(
-                'tanggal',
-                [
-                    $tanggalAwal->format('Y-m-d'),
-                    $tanggalAkhir->format('Y-m-d'),
-                ]
-            )
+        $dataLupa = Pengajuanlupaabsen::where('user_id', $this->user->id)
+            ->whereBetween('tanggal', [$tanggalAwal->format('Y-m-d'), $tanggalAkhir->format('Y-m-d')])
             ->get();
 
         $lupaAbsen = [];
-
-        foreach ($dataLupaAbsen as $item) {
-
-            $tanggalKey = Carbon::parse(
-                $item->tanggal
-            )->format('Y-m-d');
-
-            $lupaAbsen[$tanggalKey] = $item;
+        foreach ($dataLupa as $item) {
+            $lupaAbsen[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-
-        // ====================================================================
-        // LEMBUR
-        // ====================================================================
-
-        $dataLembur = Lembur::where(
-            'user_id',
-            $this->user->id
-        )
-            ->whereBetween(
-                'tanggal',
-                [
-                    $tanggalAwal->format('Y-m-d'),
-                    $tanggalAkhir->format('Y-m-d'),
-                ]
-            )
-            ->get();
-
-        $lembur = [];
-
-        foreach ($dataLembur as $item) {
-
-            $tanggalKey = Carbon::parse(
-                $item->tanggal
-            )->format('Y-m-d');
-
-            $lembur[$tanggalKey] = $item;
-        }
-
-
-        // ====================================================================
-        // SURAT SAKIT
-        // ====================================================================
-        //
-        // Surat dianggap sakit apabila:
-        //
-        // 1. jenis_surat mengandung "sakit"
-        // 2. keperluan mengandung "sakit"
-        // 3. jenis_surat = surat_keterangan
-        //    DAN keperluan mengandung "berobat"
-        //
-        // Disamakan dengan RekapabsensiController.
-        //
-        // ====================================================================
-
-        $dataSuratSakit = PengajuanSurat::where(
-            'user_id',
-            $this->user->id
-        )
-            ->whereBetween(
-                'tanggal',
-                [
-                    $tanggalAwal->format('Y-m-d'),
-                    $tanggalAkhir->format('Y-m-d'),
-                ]
-            )
-            ->where(function ($query) {
-
-                $query
-
-                    // Jenis surat mengandung "sakit"
-                    ->whereRaw(
-                        'LOWER(TRIM(COALESCE(jenis_surat, ""))) LIKE ?',
-                        ['%sakit%']
-                    )
-
-                    // Keperluan mengandung "sakit"
-                    ->orWhereRaw(
-                        'LOWER(TRIM(COALESCE(keperluan, ""))) LIKE ?',
-                        ['%sakit%']
-                    )
-
-                    // Surat keterangan untuk berobat
-                    ->orWhere(function ($q) {
-
-                        $q->whereRaw(
-                            'LOWER(TRIM(COALESCE(jenis_surat, ""))) = ?',
-                            ['surat_keterangan']
-                        )
-
-                        ->whereRaw(
-                            'LOWER(TRIM(COALESCE(keperluan, ""))) LIKE ?',
-                            ['%berobat%']
-                        );
-                    });
+        $dataSakit = Pengajuansurat::where('user_id', $this->user->id)
+            ->whereBetween('tanggal', [$tanggalAwal->format('Y-m-d'), $tanggalAkhir->format('Y-m-d')])
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
+                  ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
+                  ->orWhere(function ($sub) {
+                      $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
+                          ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
+                  });
             })
             ->get();
 
         $suratSakit = [];
-
-        foreach ($dataSuratSakit as $item) {
-
-            $tanggalKey = Carbon::parse(
-                $item->tanggal
-            )->format('Y-m-d');
-
-            $suratSakit[$tanggalKey] = $item;
+        foreach ($dataSakit as $item) {
+            $suratSakit[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-
-        // ====================================================================
-        // HEADER
-        // ====================================================================
-
         $hasil = [];
-
-        $hasil[] = [
-            'Tanggal',
-            'Hari',
-            'Shift',
-            'Status',
-            'Jam Masuk',
-            'Jam Pulang',
-            'Keterangan',
-            'Lembur',
-        ];
-
-
-        // ====================================================================
-        // DATA PER TANGGAL
-        // ====================================================================
+        $hasil[] = ['Tanggal', 'Hari', 'Shift', 'Status', 'Jam Masuk', 'Jam Pulang', 'Keterangan'];
 
         $cursor = $tanggalAwal->copy();
-
         while ($cursor->lte($tanggalAkhir)) {
 
             $tanggalKey = $cursor->format('Y-m-d');
 
-            $absensiHariIni =
-                $absensi[$tanggalKey] ?? null;
+            $absensiHariIni    = $absensi[$tanggalKey] ?? null;
+            $cutiHariIni       = $cuti[$tanggalKey] ?? null;
+            $lupaHariIni       = $lupaAbsen[$tanggalKey] ?? null;
+            $suratSakitHariIni = $suratSakit[$tanggalKey] ?? null;
 
-            $cutiHariIni =
-                $cuti[$tanggalKey] ?? null;
-
-            $lupaHariIni =
-                $lupaAbsen[$tanggalKey] ?? null;
-
-            $lemburHariIni =
-                $lembur[$tanggalKey] ?? null;
-
-            $suratSakitHariIni =
-                $suratSakit[$tanggalKey] ?? null;
-
-
-            // =================================================================
-            // DEFAULT
-            // =================================================================
+            $lupaApproved = $this->isLupaApproved($lupaHariIni);
 
             $shift = '-';
             $status = 'Belum Absen';
             $jamMasuk = '-';
             $jamPulang = '-';
             $keterangan = '-';
-            $lemburStatus = '-';
 
+            $absensiValid = $absensiHariIni
+                && $absensiHariIni->jam_masuk
+                && ($absensiHariIni->status_approval !== 'pending' || $lupaApproved);
 
-            // =================================================================
-            // DATA ABSENSI
-            // =================================================================
+            $absensiPending = $absensiHariIni
+                && $absensiHariIni->status_approval === 'pending'
+                && !$lupaApproved;
 
-            if (
-                $absensiHariIni &&
-                $absensiHariIni->jam_masuk
-            ) {
-
-                $jamMasukValue = Carbon::parse(
-                    $absensiHariIni->jam_masuk
-                );
-
-                $jamMasuk =
-                    $jamMasukValue->format('H:i');
-
-
-                $jamPulang =
-                    $absensiHariIni->jam_pulang
-                        ? Carbon::parse(
-                            $absensiHariIni->jam_pulang
-                        )->format('H:i')
-                        : '-';
-
-
-                // =============================================================
-                // SHIFT DARI DATABASE
-                // =============================================================
-
-                if (
-                    $absensiHariIni->shift === 'malam'
-                ) {
-
-                    $shift = 'Shift Malam';
-
-                } elseif (
-                    $absensiHariIni->shift === 'pagi'
-                ) {
-
-                    $shift = 'Shift Pagi';
-
-                } else {
-
-                    $shift = '-';
-                }
+            if ($absensiValid) {
+                $jamMasuk  = Carbon::parse($absensiHariIni->jam_masuk)->format('H:i');
+                $jamPulang = $absensiHariIni->jam_pulang
+                    ? Carbon::parse($absensiHariIni->jam_pulang)->format('H:i')
+                    : '-';
+                $shift = $absensiHariIni->shift === 'malam' ? 'Shift Malam' : 'Shift Pagi';
             }
-
-
-            // =================================================================
-            // STATUS
-            // =================================================================
-            //
-            // Aturan:
-            //
-            // 1. WEEKEND + ADA ABSENSI AKTUAL
-            //    => HADIR
-            //
-            // 2. WEEKEND + TIDAK ADA ABSENSI
-            //    => LIBUR
-            //
-            // 3. HARI KERJA + SAKIT
-            //    => SAKIT
-            //
-            // 4. HARI KERJA + CUTI
-            //    => CUTI
-            //
-            // 5. HARI KERJA + LUPA ABSEN
-            //    => LUPA ABSEN
-            //
-            // 6. ADA ABSENSI
-            //    => HADIR
-            //
-            // 7. LAINNYA
-            //    => BELUM ABSEN
-            //
-            // =================================================================
-
-
-            // =================================================================
-            // WEEKEND
-            // =================================================================
 
             if ($cursor->isWeekend()) {
-
-                /*
-                |--------------------------------------------------------------------------
-                | Kalau benar-benar melakukan absensi di weekend,
-                | tetap dianggap HADIR.
-                |--------------------------------------------------------------------------
-                */
-
-                if (
-                    $absensiHariIni &&
-                    $absensiHariIni->jam_masuk
-                ) {
-
-                    $status = 'Hadir';
-                    $keterangan = 'Hadir';
-
+                if ($absensiValid) {
+                    $status = 'Hadir'; $keterangan = 'Hadir';
                 } else {
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Tidak ada absensi aktual.
-                    | Cuti/sakit/lupa tidak mengubah weekend menjadi cuti/sakit.
-                    |--------------------------------------------------------------------------
-                    */
-
-                    $status = 'Libur';
-                    $keterangan = 'Hari libur';
+                    $status = 'Libur'; $keterangan = 'Hari libur';
                 }
-
             } else {
-
-                // =============================================================
-                // HARI KERJA
-                // =============================================================
-
-                if ($suratSakitHariIni) {
-
-                    $status = 'Sakit';
-                    $keterangan = 'Surat sakit';
-
+                if ($absensiPending) {
+                    $status = 'Pending'; $keterangan = 'Menunggu approval';
+                } elseif ($suratSakitHariIni) {
+                    $status = 'Sakit'; $keterangan = 'Surat sakit';
                 } elseif ($cutiHariIni) {
-
-                    $jenisCuti = strtolower(
-                        trim(
-                            $cutiHariIni->jenis_cuti ?? ''
-                        )
-                    );
-
-
-                    if (
-                        str_contains(
-                            $jenisCuti,
-                            'tambahan'
-                        )
-                    ) {
-
-                        $status = 'Cuti Tambahan';
-                        $keterangan = 'Cuti tambahan';
-
-                    } elseif (
-                        str_contains(
-                            $jenisCuti,
-                            'alasan'
-                        )
-                        || str_contains(
-                            $jenisCuti,
-                            'penting'
-                        )
-                    ) {
-
-                        $status = 'Alasan Penting';
-                        $keterangan = 'Cuti alasan penting';
-
+                    $jenisCuti = strtolower(trim($cutiHariIni->jenis_cuti ?? ''));
+                    if (str_contains($jenisCuti, 'alasan') || str_contains($jenisCuti, 'penting')) {
+                        $status = 'Alasan Penting'; $keterangan = 'Cuti alasan penting';
                     } else {
-
-                        $status = 'Cuti Tahunan';
-                        $keterangan = 'Cuti tahunan';
+                        $status = 'Cuti Tahunan'; $keterangan = 'Cuti tahunan';
                     }
-
+                } elseif ($absensiValid) {
+                    $status = 'Hadir'; $keterangan = 'Hadir';
+                } elseif ($lupaApproved) {
+                    $status = 'Hadir'; $keterangan = 'Lupa absen disetujui';
+                    $shift = 'Shift Pagi';
                 } elseif ($lupaHariIni) {
-
-                    $status = 'Lupa Absen';
-                    $keterangan = 'Perbaikan absensi';
-
-                } elseif (
-                    $absensiHariIni &&
-                    $absensiHariIni->jam_masuk
-                ) {
-
-                    $status = 'Hadir';
-                    $keterangan = 'Hadir';
+                    $status = 'Lupa Absen'; $keterangan = 'Perbaikan absensi';
                 }
             }
-
-
-            // =================================================================
-            // LEMBUR
-            // =================================================================
-
-            if ($lemburHariIni) {
-
-                $lemburStatus = 'Ya';
-            }
-
-
-            // =================================================================
-            // MASUKKAN KE EXCEL
-            // =================================================================
 
             $hasil[] = [
                 $cursor->format('d/m/Y'),
@@ -558,419 +174,101 @@ class RekapSayaExport implements
                 $jamMasuk,
                 $jamPulang,
                 $keterangan,
-                $lemburStatus,
             ];
-
-
-            $this->jumlahTanggal++;
 
             $cursor->addDay();
         }
 
-
         return $hasil;
     }
-
-
-    // ========================================================================
-    // STYLE
-    // ========================================================================
 
     public function styles(Worksheet $sheet): ?array
     {
         $lastRow = $sheet->getHighestRow();
 
-        $sheet->getStyle(
-            "A1:H1"
-        )->applyFromArray([
-
-            'font' => [
-                'bold' => true,
-            ],
-
+        $sheet->getStyle("A1:G1")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '4C1D95']],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
-                'startColor' => [
-                    'rgb' => 'EDE9FE',
-                ],
+                'startColor' => ['rgb' => 'EDE9FE'],
             ],
-
             'alignment' => [
-                'horizontal' =>
-                    Alignment::HORIZONTAL_CENTER,
-
-                'vertical' =>
-                    Alignment::VERTICAL_CENTER,
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical'   => Alignment::VERTICAL_CENTER,
             ],
-
             'borders' => [
                 'allBorders' => [
-                    'borderStyle' =>
-                        Border::BORDER_THIN,
-
-                    'color' => [
-                        'rgb' => 'D1D5DB',
-                    ],
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => 'C4B5FD'],
                 ],
             ],
         ]);
 
+        $sheet->getStyle("A1:G{$lastRow}")
+            ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $sheet->getStyle("A1:G{$lastRow}")
+            ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle("A1:G{$lastRow}")
+            ->getBorders()->getAllBorders()->getColor()->setRGB('CBD5E1');
+        $sheet->getStyle("A1:G{$lastRow}")
+            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("A1:G{$lastRow}")->getAlignment()->setWrapText(true);
 
-        $sheet->getStyle(
-            "A1:H{$lastRow}"
-        )->getAlignment()
-            ->setVertical(
-                Alignment::VERTICAL_CENTER
-            );
-
-
-        $sheet->getStyle(
-            "A1:H{$lastRow}"
-        )->getBorders()
-            ->getAllBorders()
-            ->setBorderStyle(
-                Border::BORDER_THIN
-            );
-
-
-        $sheet->getStyle(
-            "A1:H{$lastRow}"
-        )->getAlignment()
-            ->setHorizontal(
-                Alignment::HORIZONTAL_CENTER
-            );
-
-
-        $sheet->getStyle(
-            "A1:H{$lastRow}"
-        )->getAlignment()
-            ->setWrapText(true);
-
-
-        $sheet->getRowDimension(1)
-            ->setRowHeight(25);
-
+        $sheet->getRowDimension(1)->setRowHeight(28);
 
         return [];
     }
 
-
-    // ========================================================================
-    // LEBAR KOLOM
-    // ========================================================================
-
     public function columnWidths(): array
     {
         return [
-            'A' => 14,
-            'B' => 14,
-            'C' => 18,
-            'D' => 20,
-            'E' => 14,
-            'F' => 14,
-            'G' => 25,
-            'H' => 12,
+            'A' => 14, 'B' => 14, 'C' => 18,
+            'D' => 20, 'E' => 14, 'F' => 14, 'G' => 25,
         ];
     }
-
-
-    // ========================================================================
-    // EVENT
-    // ========================================================================
 
     public function registerEvents(): array
     {
         return [
+            AfterSheet::class => function (AfterSheet $event) {
 
-            AfterSheet::class => function (
-                AfterSheet $event
-            ) {
-
-                $sheet =
-                    $event->sheet->getDelegate();
-
-                $highestRow =
-                    $sheet->getHighestRow();
-
-
-                // =============================================================
-                // FREEZE HEADER
-                // =============================================================
+                $sheet = $event->sheet->getDelegate();
+                $highestRow = $sheet->getHighestRow();
 
                 $sheet->freezePane('A2');
 
+                // 🎨 PALET WARNA — SINKRON
+                $statusColors = [
+                    'Hadir'          => ['D1FAE5', '065F46'], // Emerald
+                    'Sakit'          => ['FFE4E6', '9F1239'], // Rose
+                    'Cuti Tahunan'   => ['FEF3C7', '92400E'], // Amber
+                    'Alasan Penting' => ['FFEDD5', 'C2410C'], // Orange
+                    'Lupa Absen'     => ['E0F2FE', '075985'], // Sky
+                    'Pending'        => ['FED7AA', '9A3412'], // Peach
+                    'Libur'          => ['FEE2E2', 'B91C1C'], // Red
+                ];
 
-                // =============================================================
-                // TINGGI BARIS
-                // =============================================================
+                for ($row = 2; $row <= $highestRow; $row++) {
+                    $sheet->getRowDimension($row)->setRowHeight(22);
 
-                for (
-                    $row = 2;
-                    $row <= $highestRow;
-                    $row++
-                ) {
+                    $status = $sheet->getCell("D{$row}")->getValue();
 
-                    $sheet->getRowDimension($row)
-                        ->setRowHeight(22);
-                }
-
-
-                // =============================================================
-                // WARNA STATUS
-                // =============================================================
-
-                for (
-                    $row = 2;
-                    $row <= $highestRow;
-                    $row++
-                ) {
-
-                    $status =
-                        $sheet
-                            ->getCell("D{$row}")
-                            ->getValue();
-
-
-                    $cell =
-                        $sheet->getStyle(
-                            "D{$row}"
-                        );
-
-
-                    // =========================================================
-                    // HADIR
-                    // =========================================================
-
-                    if ($status === 'Hadir') {
-
-                        $cell->getFill()
-                            ->setFillType(
-                                Fill::FILL_SOLID
-                            );
-
-                        $cell->getFill()
-                            ->getStartColor()
-                            ->setRGB(
-                                'DCFCE7'
-                            );
-
-                        $cell->getFont()
-                            ->getColor()
-                            ->setRGB(
-                                '166534'
-                            );
-
-                        $cell->getFont()
-                            ->setBold(true);
+                    if (isset($statusColors[$status])) {
+                        [$bg, $fg] = $statusColors[$status];
+                        $cell = $sheet->getStyle("D{$row}");
+                        $cell->getFill()->setFillType(Fill::FILL_SOLID);
+                        $cell->getFill()->getStartColor()->setRGB($bg);
+                        $cell->getFont()->getColor()->setRGB($fg);
+                        $cell->getFont()->setBold(true);
                     }
 
-
-                    // =========================================================
-                    // SAKIT
-                    // =========================================================
-
-                    if ($status === 'Sakit') {
-
-                        $cell->getFill()
-                            ->setFillType(
-                                Fill::FILL_SOLID
-                            );
-
-                        $cell->getFill()
-                            ->getStartColor()
-                            ->setRGB(
-                                'FEF3C7'
-                            );
-
-                        $cell->getFont()
-                            ->getColor()
-                            ->setRGB(
-                                '92400E'
-                            );
-
-                        $cell->getFont()
-                            ->setBold(true);
-                    }
-
-
-                    // =========================================================
-                    // CUTI TAHUNAN
-                    // =========================================================
-
-                    if ($status === 'Cuti Tahunan') {
-
-                        $cell->getFill()
-                            ->setFillType(
-                                Fill::FILL_SOLID
-                            );
-
-                        $cell->getFill()
-                            ->getStartColor()
-                            ->setRGB(
-                                'EDE9FE'
-                            );
-
-                        $cell->getFont()
-                            ->getColor()
-                            ->setRGB(
-                                '6D28D9'
-                            );
-
-                        $cell->getFont()
-                            ->setBold(true);
-                    }
-
-
-                    // =========================================================
-                    // ALASAN PENTING
-                    // =========================================================
-
-                    if ($status === 'Alasan Penting') {
-
-                        $cell->getFill()
-                            ->setFillType(
-                                Fill::FILL_SOLID
-                            );
-
-                        $cell->getFill()
-                            ->getStartColor()
-                            ->setRGB(
-                                'FCE7F3'
-                            );
-
-                        $cell->getFont()
-                            ->getColor()
-                            ->setRGB(
-                                '9D174D'
-                            );
-
-                        $cell->getFont()
-                            ->setBold(true);
-                    }
-
-
-                    // =========================================================
-                    // CUTI TAMBAHAN
-                    // =========================================================
-
-                    if ($status === 'Cuti Tambahan') {
-
-                        $cell->getFill()
-                            ->setFillType(
-                                Fill::FILL_SOLID
-                            );
-
-                        $cell->getFill()
-                            ->getStartColor()
-                            ->setRGB(
-                                'E0F2FE'
-                            );
-
-                        $cell->getFont()
-                            ->getColor()
-                            ->setRGB(
-                                '0369A1'
-                            );
-
-                        $cell->getFont()
-                            ->setBold(true);
-                    }
-
-
-                    // =========================================================
-                    // LUPA ABSEN
-                    // =========================================================
-
-                    if ($status === 'Lupa Absen') {
-
-                        $cell->getFill()
-                            ->setFillType(
-                                Fill::FILL_SOLID
-                            );
-
-                        $cell->getFill()
-                            ->getStartColor()
-                            ->setRGB(
-                                'F3E8FF'
-                            );
-
-                        $cell->getFont()
-                            ->getColor()
-                            ->setRGB(
-                                '7E22CE'
-                            );
-
-                        $cell->getFont()
-                            ->setBold(true);
-                    }
-
-
-                    // =========================================================
-                    // SHIFT MALAM
-                    // =========================================================
-
-                    if (
-                        $sheet
-                            ->getCell("C{$row}")
-                            ->getValue()
-                            === 'Shift Malam'
-                    ) {
-
-                        $sheet
-                            ->getStyle("C{$row}")
-                            ->getFill()
-                            ->setFillType(
-                                Fill::FILL_SOLID
-                            );
-
-                        $sheet
-                            ->getStyle("C{$row}")
-                            ->getFill()
-                            ->getStartColor()
-                            ->setRGB(
-                                'DBEAFE'
-                            );
-
-                        $sheet
-                            ->getStyle("C{$row}")
-                            ->getFont()
-                            ->getColor()
-                            ->setRGB(
-                                '1D4ED8'
-                            );
-
-                        $sheet
-                            ->getStyle("C{$row}")
-                            ->getFont()
-                            ->setBold(true);
-                    }
-
-
-                    // =========================================================
-                    // LIBUR
-                    // =========================================================
-
-                    if ($status === 'Libur') {
-
-                        $cell->getFill()
-                            ->setFillType(
-                                Fill::FILL_SOLID
-                            );
-
-                        $cell->getFill()
-                            ->getStartColor()
-                            ->setRGB(
-                                'FECACA'
-                            );
-
-                        $cell->getFont()
-                            ->getColor()
-                            ->setRGB(
-                                'B91C1C'
-                            );
-
-                        $cell->getFont()
-                            ->setBold(true);
+                    // Shift malam → violet
+                    if ($sheet->getCell("C{$row}")->getValue() === 'Shift Malam') {
+                        $shiftCell = $sheet->getStyle("C{$row}");
+                        $shiftCell->getFill()->setFillType(Fill::FILL_SOLID);
+                        $shiftCell->getFill()->getStartColor()->setRGB('EDE9FE');
+                        $shiftCell->getFont()->getColor()->setRGB('6D28D9');
+                        $shiftCell->getFont()->setBold(true);
                     }
                 }
             },

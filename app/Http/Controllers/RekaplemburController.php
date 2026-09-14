@@ -14,23 +14,13 @@ class RekaplemburController extends Controller
         $tahun = (int) $request->input('tahun', now()->year);
         $userId = $request->input('user_id');
 
-        /*
-        |--------------------------------------------------------------------------
-        | DAFTAR PPNPN
-        |--------------------------------------------------------------------------
-        */
-
+        // Daftar PPNPN
         $pegawai = User::with('profil')
             ->where('role', 'ppnpn')
             ->orderBy('name')
             ->get();
 
-        /*
-        |--------------------------------------------------------------------------
-        | DATA LEMBUR
-        |--------------------------------------------------------------------------
-        */
-
+        // Data lembur periode ini
         $query = Lembur::whereYear('tanggal', $tahun)
             ->whereMonth('tanggal', $bulan);
 
@@ -43,20 +33,18 @@ class RekaplemburController extends Controller
             ->orderByDesc('jam_mulai')
             ->get();
 
-        /*
-        |--------------------------------------------------------------------------
-        | JUMLAH LEMBUR
-        |--------------------------------------------------------------------------
-        */
-
         $jumlahLembur = $dataLembur->count();
 
-        /*
-        |--------------------------------------------------------------------------
-        | PERIODE
-        |--------------------------------------------------------------------------
-        */
+        // Total jam disetujui vs semua
+        $totalJamDisetujui = (float) $dataLembur
+            ->where('status_approval', 'approved')
+            ->sum('total_jam');
 
+        $totalJamSemua = (float) $dataLembur->sum('total_jam');
+
+        $jumlahPending = $dataLembur->where('status_approval', 'pending')->count();
+
+        // Periode
         $tanggalAwal = now()
             ->setYear($tahun)
             ->setMonth($bulan)
@@ -66,6 +54,9 @@ class RekaplemburController extends Controller
             'dataLembur',
             'pegawai',
             'jumlahLembur',
+            'totalJamDisetujui',
+            'totalJamSemua',
+            'jumlahPending',
             'bulan',
             'tahun',
             'userId',
@@ -73,12 +64,8 @@ class RekaplemburController extends Controller
         ));
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT EXCEL
-    |--------------------------------------------------------------------------
-    */
 
+    // Export Excel
     public function exportExcel(Request $request)
     {
         $bulan = (int) $request->input('bulan', now()->month);
@@ -86,21 +73,13 @@ class RekaplemburController extends Controller
         $userId = $request->input('user_id');
 
         return \Maatwebsite\Excel\Facades\Excel::download(
-            new \App\Exports\RekaplemburExport(
-                $bulan,
-                $tahun,
-                $userId
-            ),
+            new \App\Exports\RekaplemburExport($bulan, $tahun, $userId),
             'rekap-lembur-' . $tahun . '-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '.xlsx'
         );
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXPORT PDF
-    |--------------------------------------------------------------------------
-    */
 
+    // Export PDF
     public function exportPdf(Request $request)
     {
         $bulan = (int) $request->input('bulan', now()->month);
@@ -129,11 +108,7 @@ class RekaplemburController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
             'rekaplembur.pdf',
-            compact(
-                'dataLembur',
-                'jumlahLembur',
-                'tanggalAwal'
-            )
+            compact('dataLembur', 'jumlahLembur', 'tanggalAwal')
         )->setPaper('a4', 'landscape');
 
         return $pdf->download(

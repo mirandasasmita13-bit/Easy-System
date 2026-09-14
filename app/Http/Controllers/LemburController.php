@@ -3,27 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lembur;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class LemburController extends Controller
 {
-    /*
-    |--------------------------------------------------------------------------
-    | KOORDINAT KANTOR
-    |--------------------------------------------------------------------------
-    */
-
+    // Koordinat kantor
     private $officeLatitude = 4.636822941619201;
     private $officeLongitude = 96.84824583097509;
-    private $maxRadius = 500;
+    private $maxRadius = 200;
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | HALAMAN LEMBUR
-    |--------------------------------------------------------------------------
-    */
-
+    // Halaman lembur
     public function index()
     {
         $user = auth()->user();
@@ -37,69 +28,22 @@ class LemburController extends Controller
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | SIMPAN LEMBUR
-    |--------------------------------------------------------------------------
-    */
-
+    // Simpan lembur
     public function store(Request $request)
     {
         $user = auth()->user();
 
-        /*
-        |--------------------------------------------------------------------------
-        | VALIDASI DATA
-        |--------------------------------------------------------------------------
-        */
-
         $request->validate([
-            'tanggal' => [
-                'required',
-                'date',
-            ],
-
-            'jam_mulai' => [
-                'required',
-                'date_format:H:i',
-            ],
-
-            'jam_selesai' => [
-                'required',
-                'date_format:H:i',
-            ],
-
-            'kegiatan' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-
-            'foto' => [
-                'required',
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ],
-
-            'latitude' => [
-                'required',
-                'numeric',
-            ],
-
-            'longitude' => [
-                'required',
-                'numeric',
-            ],
+            'tanggal' => ['required', 'date'],
+            'jam_mulai' => ['required', 'date_format:H:i'],
+            'jam_selesai' => ['required', 'date_format:H:i'],
+            'kegiatan' => ['required', 'string', 'max:255'],
+            'foto' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'latitude' => ['required', 'numeric'],
+            'longitude' => ['required', 'numeric'],
         ]);
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | CEK LOKASI
-        |--------------------------------------------------------------------------
-        */
-
+        // Cek lokasi
         $latitude = (float) $request->latitude;
         $longitude = (float) $request->longitude;
 
@@ -110,13 +54,7 @@ class LemburController extends Controller
             $this->officeLongitude
         );
 
-
-        /*
-        | Kalau lebih dari 500 meter → tidak boleh lembur
-        */
-
         if ($jarak > $this->maxRadius) {
-
             return back()
                 ->withInput()
                 ->with(
@@ -127,70 +65,72 @@ class LemburController extends Controller
                 );
         }
 
+        // Simpan foto
+        $foto = $request->file('foto')->store('foto-lembur', 'public');
 
-        /*
-        |--------------------------------------------------------------------------
-        | SIMPAN FOTO
-        |--------------------------------------------------------------------------
-        */
+        // Hitung total jam
+        $totalJam = Lembur::hitungTotalJam($request->jam_mulai, $request->jam_selesai);
 
-        $foto = $request
-            ->file('foto')
-            ->store('foto-lembur', 'public');
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | SIMPAN DATA LEMBUR
-        |--------------------------------------------------------------------------
-        */
-
+        // Simpan data lembur
         Lembur::create([
-            'user_id' => $user->id,
-
-            'tanggal' => $request->tanggal,
-
-            'jam_mulai' => $request->jam_mulai,
-
-            'jam_selesai' => $request->jam_selesai,
-
-            'kegiatan' => $request->kegiatan,
-
-            /*
-            | Kolom keterangan tidak digunakan lagi.
-            | Kalau kolomnya masih ada di database,
-            | tidak masalah dibiarkan nullable.
-            */
-
-            'keterangan' => null,
-
-            'foto' => $foto,
+            'user_id'         => $user->id,
+            'tanggal'         => $request->tanggal,
+            'jam_mulai'       => $request->jam_mulai,
+            'jam_selesai'     => $request->jam_selesai,
+            'total_jam'       => $totalJam,
+            'kegiatan'        => $request->kegiatan,
+            'keterangan'      => null,
+            'foto'            => $foto,
+            'status_approval' => 'pending',
         ]);
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | BERHASIL
-        |--------------------------------------------------------------------------
-        */
 
         return back()->with(
             'success',
-            'Data lembur berhasil disimpan.'
+            'Data lembur berhasil disimpan, menunggu persetujuan admin.'
         );
     }
 
 
-    /*
-    |--------------------------------------------------------------------------
-    | HITUNG JARAK
-    |--------------------------------------------------------------------------
-    |
-    | Menggunakan rumus Haversine.
-    | Hasil dalam meter.
-    |
-    */
+    // Admin: approve lembur
+    public function approve(Request $request, Lembur $lembur)
+    {
+        if ($lembur->status_approval !== 'pending') {
+            return back()->with('error', 'Pengajuan lembur ini sudah diproses sebelumnya.');
+        }
 
+        $lembur->update([
+            'status_approval' => 'approved',
+            'approved_by'     => auth()->id(),
+            'approved_at'     => now(),
+        ]);
+
+        return back()->with('success', 'Pengajuan lembur disetujui.');
+    }
+
+
+    // Admin: reject lembur
+    public function reject(Request $request, Lembur $lembur)
+    {
+        if ($lembur->status_approval !== 'pending') {
+            return back()->with('error', 'Pengajuan lembur ini sudah diproses sebelumnya.');
+        }
+
+        $request->validate([
+            'catatan_admin' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $lembur->update([
+            'status_approval' => 'rejected',
+            'catatan_admin'   => $request->catatan_admin,
+            'approved_by'     => auth()->id(),
+            'approved_at'     => now(),
+        ]);
+
+        return back()->with('success', 'Pengajuan lembur ditolak.');
+    }
+
+
+    // Hitung jarak (Haversine)
     private function hitungJarak(
         float $lat1,
         float $lon1,
@@ -210,12 +150,9 @@ class LemburController extends Controller
             sin($deltaLat / 2) * sin($deltaLat / 2)
             +
             cos($lat1Rad)
-            *
-            cos($lat2Rad)
-            *
-            sin($deltaLon / 2)
-            *
-            sin($deltaLon / 2);
+            * cos($lat2Rad)
+            * sin($deltaLon / 2)
+            * sin($deltaLon / 2);
 
         $c = 2 * atan2(
             sqrt($a),

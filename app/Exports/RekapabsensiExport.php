@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Absensi;
 use App\Models\Pengajuancuti;
 use App\Models\Pengajuanlupaabsen;
+use App\Models\Pengajuansurat;
 use Carbon\Carbon;
 
 use Maatwebsite\Excel\Concerns\FromArray;
@@ -17,21 +18,15 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 
 use Maatwebsite\Excel\Events\AfterSheet;
 
-
-class RekapabsensiExport implements
-    FromArray,
-    WithStyles,
-    WithColumnWidths,
-    WithEvents
+class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, WithEvents
 {
     protected $bulan;
     protected $tahun;
-
     protected $jumlahTanggal = 0;
-
 
     public function __construct($bulan, $tahun)
     {
@@ -39,725 +34,365 @@ class RekapabsensiExport implements
         $this->tahun = $tahun;
     }
 
-
-    // =========================================================
-    // DATA EXCEL
-    // =========================================================
+    private function isLupaApproved($lupa): bool
+    {
+        if (!$lupa) return false;
+        $approved = ['approved', 'disetujui', 'diterima', 'setuju', 'accept', 'accepted', 'terima'];
+        foreach (['status', 'status_approval', 'status_pengajuan', 'approval_status', 'status_verifikasi'] as $field) {
+            if (!isset($lupa->$field)) continue;
+            if (in_array(strtolower(trim((string) $lupa->$field)), $approved, true)) return true;
+        }
+        return false;
+    }
 
     public function array(): array
     {
-        $tanggalAwal = Carbon::create(
-            $this->tahun,
-            $this->bulan,
-            1
-        );
+        $tanggalAwal  = Carbon::create($this->tahun, $this->bulan, 1)->startOfMonth();
+        $tanggalAkhir = Carbon::create($this->tahun, $this->bulan, 1)->endOfMonth();
 
-        $tanggalAkhir = $tanggalAwal->copy()->endOfMonth();
-
-
-        // =====================================================
-        // PEGAWAI
-        // =====================================================
-
-        $pegawai = User::with('profil')
-            ->where('role', '!=', 'admin')
+        $ppnpn = User::with('profil')
+            ->where('role', 'ppnpn')
+            ->where('status', 'aktif')
             ->orderBy('name')
             ->get();
 
-
-        // =====================================================
         // ABSENSI
-        // =====================================================
-
-        $dataAbsensi = Absensi::whereBetween(
-            'tanggal',
-            [
+        $dataAbsensi = Absensi::whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
-            ]
-        )->get();
+            ])
+            ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
+            ->get();
 
         $absensi = [];
-
         foreach ($dataAbsensi as $item) {
-
-            $tanggalKey = Carbon::parse(
-                $item->tanggal
-            )->format('Y-m-d');
-
-            $absensi[$item->user_id][$tanggalKey] = $item;
+            $absensi[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-
-        // =====================================================
         // CUTI
-        // =====================================================
-
-        $dataCuti = Pengajuancuti::where(function ($query) use (
-            $tanggalAwal,
-            $tanggalAkhir
-        ) {
-
-            $query
-                ->whereBetween('tanggal_mulai', [
-                    $tanggalAwal->format('Y-m-d'),
-                    $tanggalAkhir->format('Y-m-d'),
-                ])
-
-                ->orWhereBetween('tanggal_selesai', [
-                    $tanggalAwal->format('Y-m-d'),
-                    $tanggalAkhir->format('Y-m-d'),
-                ])
-
-                ->orWhere(function ($q) use (
-                    $tanggalAwal,
-                    $tanggalAkhir
-                ) {
-
-                    $q->where(
-                        'tanggal_mulai',
-                        '<=',
-                        $tanggalAwal->format('Y-m-d')
-                    )
-
-                    ->where(
-                        'tanggal_selesai',
-                        '>=',
-                        $tanggalAkhir->format('Y-m-d')
-                    );
-                });
-
-        })->get();
-
+        $dataCuti = Pengajuancuti::whereDate('tanggal_mulai', '<=', $tanggalAkhir)
+            ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
+            ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
+            ->get();
 
         $cuti = [];
-
         foreach ($dataCuti as $item) {
-
-            $mulai = Carbon::parse(
-                $item->tanggal_mulai
-            );
-
-            $selesai = Carbon::parse(
-                $item->tanggal_selesai
-            );
-
+            $mulai   = Carbon::parse($item->tanggal_mulai);
+            $selesai = Carbon::parse($item->tanggal_selesai);
             while ($mulai->lte($selesai)) {
-
-                $tanggalKey = $mulai->format('Y-m-d');
-
-                $cuti[$item->user_id][$tanggalKey] = $item;
-
+                if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
+                    $cuti[$item->user_id][$mulai->format('Y-m-d')] = $item;
+                }
                 $mulai->addDay();
             }
         }
 
-
-        // =====================================================
         // LUPA ABSEN
-        // =====================================================
-
-        $dataLupaAbsen = Pengajuanlupaabsen::whereBetween(
-            'tanggal',
-            [
+        $dataLupa = Pengajuanlupaabsen::whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
-            ]
-        )->get();
+            ])
+            ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
+            ->get();
 
         $lupaAbsen = [];
-
-        foreach ($dataLupaAbsen as $item) {
-
-            $tanggalKey = Carbon::parse(
-                $item->tanggal
-            )->format('Y-m-d');
-
-            $lupaAbsen[$item->user_id][$tanggalKey] = $item;
+        foreach ($dataLupa as $item) {
+            $lupaAbsen[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
+        // SURAT SAKIT
+        $dataSakit = Pengajuansurat::whereBetween('tanggal', [
+                $tanggalAwal->format('Y-m-d'),
+                $tanggalAkhir->format('Y-m-d'),
+            ])
+            ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
+            ->where(function ($q) {
+                $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
+                  ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
+                  ->orWhere(function ($sub) {
+                      $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
+                          ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
+                  });
+            })
+            ->get();
 
-        // =====================================================
-        // HEADER
-        // =====================================================
+        $suratSakit = [];
+        foreach ($dataSakit as $item) {
+            $suratSakit[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
+        }
 
+        // HEADER (baris 1: tanggal + nama hari, baris 2: jam legend)
         $hasil = [];
-
-        $header = [
-            'No',
-            'Nama Pegawai',
-            'Jabatan',
-        ];
-
+        $header1 = ['No', 'Nama PPNPN', 'Jabatan'];
+        $header2 = ['', '', ''];
 
         $cursor = $tanggalAwal->copy();
-
         while ($cursor->lte($tanggalAkhir)) {
-
-            $header[] = $cursor->format('d');
-
+            $header1[] = $cursor->format('d');
+            $header2[] = $cursor->translatedFormat('D');
             $this->jumlahTanggal++;
-
             $cursor->addDay();
         }
 
+        $header1[] = 'Hadir'; $header1[] = 'Cuti';  $header1[] = 'CAP';
+        $header1[] = 'Sakit'; $header1[] = 'Lupa';  $header1[] = 'Pending';
+        $header2[] = ''; $header2[] = ''; $header2[] = '';
+        $header2[] = ''; $header2[] = ''; $header2[] = '';
 
-        // =====================================================
-        // RINGKASAN
-        // =====================================================
+        $hasil[] = $header1;
+        $hasil[] = $header2;
 
-        $header[] = 'Hadir';
-        $header[] = 'Cuti';
-        $header[] = 'Cuti Tambahan';
-        $header[] = 'Lupa Absen';
-
-        $hasil[] = $header;
-
-
-        // =====================================================
-        // DATA PEGAWAI
-        // =====================================================
-
-        foreach ($pegawai as $index => $user) {
+        // DATA PER PPNPN
+        foreach ($ppnpn as $index => $user) {
 
             $baris = [
                 $index + 1,
                 $user->name,
-                $user->profil?->jabatan ?? 'Pegawai',
+                $user->profil?->jabatan ?? 'PPNPN',
             ];
 
-
-            $jumlahHadir = 0;
-            $jumlahCuti = 0;
-            $jumlahCutiTambahan = 0;
-            $jumlahLupaAbsen = 0;
-
+            $jumlahHadir = 0; $jumlahCuti = 0; $jumlahCAP = 0;
+            $jumlahSakit = 0; $jumlahLupa = 0; $jumlahPending = 0;
 
             $cursor = $tanggalAwal->copy();
-
 
             while ($cursor->lte($tanggalAkhir)) {
 
                 $tanggalKey = $cursor->format('Y-m-d');
 
+                $absensiHariIni = $absensi[$user->id][$tanggalKey] ?? null;
+                $cutiHariIni    = $cuti[$user->id][$tanggalKey] ?? null;
+                $lupaHariIni    = $lupaAbsen[$user->id][$tanggalKey] ?? null;
+                $sakitHariIni   = $suratSakit[$user->id][$tanggalKey] ?? null;
 
-                $absensiHariIni =
-                    $absensi[$user->id][$tanggalKey] ?? null;
+                $lupaApproved = $this->isLupaApproved($lupaHariIni);
 
-                $cutiHariIni =
-                    $cuti[$user->id][$tanggalKey] ?? null;
+                $absensiValid = $absensiHariIni
+                    && $absensiHariIni->jam_masuk
+                    && ($absensiHariIni->status_approval !== 'pending' || $lupaApproved);
 
-                $lupaHariIni =
-                    $lupaAbsen[$user->id][$tanggalKey] ?? null;
-
+                $absensiPending = $absensiHariIni
+                    && $absensiHariIni->status_approval === 'pending'
+                    && !$lupaApproved;
 
                 $kode = '-';
-
-
-                // =================================================
-                // WEEKEND
-                // =================================================
+                $jamMasukText = null; $jamPulangText = null;
 
                 if ($cursor->isWeekend()) {
-
-                    /*
-                     * Weekend + ADA ABSEN
-                     * = tetap hadir
-                     */
-
-                    if (
-                        $absensiHariIni &&
-                        $absensiHariIni->jam_masuk
-                    ) {
-
-                        /*
-                         * Shift dibaca langsung dari database.
-                         *
-                         * pagi  = H
-                         * malam = M
-                         */
-
-                        if ($absensiHariIni->shift === 'malam') {
-
-                            $kode = 'M';
-
-                        } else {
-
-                            $kode = 'H';
-                        }
-
-
+                    if ($absensiValid) {
+                        $kode = ($absensiHariIni->shift === 'malam') ? 'M' : 'H';
                         $jumlahHadir++;
-
+                        $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
+                        $jamPulangText = $absensiHariIni->jam_pulang ? Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') : null;
+                    } elseif ($absensiPending) {
+                        $kode = 'P'; $jumlahPending++;
+                        $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
                     } else {
-
-                        /*
-                         * Weekend + TIDAK ADA ABSEN
-                         * = LIBUR
-                         */
-
                         $kode = 'LIB';
                     }
-
-
-                // =================================================
-                // CUTI
-                // =================================================
-
-                } elseif ($cutiHariIni) {
-
-                    if (
-                        $cutiHariIni->jenis_cuti === 'tambahan'
-                    ) {
-
-                        $kode = 'CT';
-
-                        $jumlahCutiTambahan++;
-
-                    } else {
-
-                        $kode = 'C';
-
-                        $jumlahCuti++;
+                } else {
+                    if ($sakitHariIni) {
+                        $kode = 'S'; $jumlahSakit++;
+                    } elseif ($cutiHariIni) {
+                        if ($cutiHariIni->jenis_cuti === 'alasan_penting') { $kode = 'CAP'; $jumlahCAP++; }
+                        else { $kode = 'C'; $jumlahCuti++; }
+                    } elseif ($absensiValid) {
+                        $kode = ($absensiHariIni->shift === 'malam') ? 'M' : 'H';
+                        $jumlahHadir++;
+                        $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
+                        $jamPulangText = $absensiHariIni->jam_pulang ? Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') : null;
+                    } elseif ($lupaApproved) {
+                        $kode = 'H'; $jumlahHadir++;
+                        $jamMasukText = $absensiHariIni && $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
+                    } elseif ($lupaHariIni && !$absensiPending) {
+                        $kode = 'LA'; $jumlahLupa++;
+                    } elseif ($absensiPending) {
+                        $kode = 'P'; $jumlahPending++;
+                        $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
                     }
-
-
-                // =================================================
-                // LUPA ABSEN
-                // =================================================
-
-                } elseif (
-                    $lupaHariIni &&
-                    !$absensiHariIni
-                ) {
-
-                    $kode = 'LA';
-
-                    $jumlahLupaAbsen++;
-
-
-                // =================================================
-                // ABSENSI
-                // =================================================
-
-                } elseif (
-                    $absensiHariIni &&
-                    $absensiHariIni->jam_masuk
-                ) {
-
-                    /*
-                     * Shift dibaca langsung dari database.
-                     *
-                     * pagi  = H
-                     * malam = M
-                     */
-
-                    if ($absensiHariIni->shift === 'malam') {
-
-                        $kode = 'M';
-
-                    } else {
-
-                        $kode = 'H';
-                    }
-
-
-                    $jumlahHadir++;
                 }
 
+                // Format cell: KODE di baris 1, ↓ jam masuk baris 2, ↑ jam pulang baris 3
+                $display = $kode;
+                if ($jamMasukText)  $display .= "\n↓ " . $jamMasukText;
+                if ($jamPulangText) $display .= "\n↑ " . $jamPulangText;
 
-                $baris[] = $kode;
-
+                $baris[] = $display;
                 $cursor->addDay();
             }
 
-
-            // =====================================================
-            // RINGKASAN
-            // =====================================================
-
             $baris[] = $jumlahHadir;
             $baris[] = $jumlahCuti;
-            $baris[] = $jumlahCutiTambahan;
-            $baris[] = $jumlahLupaAbsen;
-
+            $baris[] = $jumlahCAP;
+            $baris[] = $jumlahSakit;
+            $baris[] = $jumlahLupa;
+            $baris[] = $jumlahPending;
 
             $hasil[] = $baris;
         }
 
-
         return $hasil;
     }
 
-
-    // =========================================================
-    // STYLE DASAR
-    // =========================================================
-
     public function styles(Worksheet $sheet): ?array
     {
-        /*
-         * Kolom:
-         *
-         * A = No
-         * B = Nama Pegawai
-         * C = Jabatan
-         * D dst = Tanggal
-         *
-         * Setelah tanggal:
-         * Hadir
-         * Cuti
-         * Cuti Tambahan
-         * Lupa Absen
-         *
-         * Total tambahan setelah tanggal = 4 kolom.
-         *
-         * Jadi:
-         * jumlahTanggal + 7
-         *
-         * karena 3 kolom awal + jumlah tanggal + 4 ringkasan
-         */
+        $lastColumn = $this->jumlahTanggal + 9;
+        $lastColumnLetter = Coordinate::stringFromColumnIndex($lastColumn);
 
-        $lastColumn = $this->jumlahTanggal + 7;
-
-        $lastColumnLetter =
-            \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(
-                $lastColumn
-            );
-
-
-        // =====================================================
-        // HEADER
-        // =====================================================
-
-        $sheet->getStyle(
-            "A1:{$lastColumnLetter}1"
-        )->applyFromArray([
-
-            'font' => [
-                'bold' => true,
-            ],
-
+        // Header baris 1 & 2
+        $sheet->getStyle("A1:{$lastColumnLetter}2")->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => '4C1D95']],
             'fill' => [
                 'fillType' => Fill::FILL_SOLID,
-                'startColor' => [
-                    'rgb' => 'EDE9FE',
-                ],
+                'startColor' => ['rgb' => 'EDE9FE'],
             ],
-
             'alignment' => [
-                'horizontal' =>
-                    Alignment::HORIZONTAL_CENTER,
-
-                'vertical' =>
-                    Alignment::VERTICAL_CENTER,
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical'   => Alignment::VERTICAL_CENTER,
+                'wrapText'   => true,
             ],
-
             'borders' => [
                 'allBorders' => [
-                    'borderStyle' =>
-                        Border::BORDER_THIN,
-
-                    'color' => [
-                        'rgb' => 'D1D5DB',
-                    ],
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => 'C4B5FD'],
                 ],
             ],
         ]);
 
+        $sheet->getStyle("A1:{$lastColumnLetter}" . $sheet->getHighestRow())
+            ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
 
-        // =====================================================
-        // SEMUA CELL
-        // =====================================================
-
-        $sheet->getStyle(
-            "A1:{$lastColumnLetter}" .
-            ($sheet->getHighestRow())
-        )->getAlignment()->setVertical(
-            Alignment::VERTICAL_CENTER
-        );
-
-
-        // =====================================================
-        // TINGGI HEADER
-        // =====================================================
-
-        $sheet->getRowDimension(1)
-            ->setRowHeight(25);
-
+        $sheet->getRowDimension(1)->setRowHeight(22);
+        $sheet->getRowDimension(2)->setRowHeight(16);
 
         return [];
     }
 
-
-    // =========================================================
-    // LEBAR KOLOM
-    // =========================================================
-
     public function columnWidths(): array
     {
         $widths = [
-
-            'A' => 6,
-            'B' => 28,
-            'C' => 25,
-
+            'A' => 5,
+            'B' => 24,
+            'C' => 18,
         ];
 
-
-        // =====================================================
-        // KOLOM TANGGAL
-        // =====================================================
-
-        for (
-            $i = 4;
-            $i <= $this->jumlahTanggal + 3;
-            $i++
-        ) {
-
-            $column =
-                \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(
-                    $i
-                );
-
-            $widths[$column] = 6;
+        // Kolom tanggal — lebar 8.5 supaya muat "↓ 07:30"
+        for ($i = 4; $i <= $this->jumlahTanggal + 3; $i++) {
+            $column = Coordinate::stringFromColumnIndex($i);
+            $widths[$column] = 8.5;
         }
 
+        // Kolom ringkasan
+        for ($i = $this->jumlahTanggal + 4; $i <= $this->jumlahTanggal + 9; $i++) {
+            $column = Coordinate::stringFromColumnIndex($i);
+            $widths[$column] = 8;
+        }
 
         return $widths;
     }
 
-
-    // =========================================================
-    // EVENT UNTUK WARNA CELL
-    // =========================================================
-
     public function registerEvents(): array
     {
         return [
+            AfterSheet::class => function (AfterSheet $event) {
 
-            AfterSheet::class => function (
-                AfterSheet $event
-            ) {
+                $sheet = $event->sheet->getDelegate();
+                $highestRow = $sheet->getHighestRow();
 
-                $sheet =
-                    $event->sheet->getDelegate();
+                $kolomAwalTanggal  = 4;
+                $kolomAkhirTanggal = $this->jumlahTanggal + 3;
 
+                // 🎨 PALET WARNA — SINKRON DENGAN VIEW & PDF
+                $palette = [
+                    'H'   => ['D1FAE5', '065F46'],
+                    'M'   => ['EDE9FE', '6D28D9'],
+                    'C'   => ['FEF3C7', '92400E'],
+                    'CAP' => ['FFEDD5', 'C2410C'],
+                    'LA'  => ['E0F2FE', '075985'],
+                    'S'   => ['FFE4E6', '9F1239'],
+                    'P'   => ['FED7AA', '9A3412'],
+                    'LIB' => ['FEE2E2', 'B91C1C'],
+                ];
 
-                $highestRow =
-                    $sheet->getHighestRow();
+                $lastCol = Coordinate::stringFromColumnIndex($this->jumlahTanggal + 9);
 
+                // Wrap text seluruh tabel
+                $sheet->getStyle("A1:{$lastCol}{$highestRow}")->getAlignment()->setWrapText(true);
 
-                /*
-                 * Kolom tanggal dimulai dari D.
-                 */
+                // Set tinggi baris data
+                for ($row = 3; $row <= $highestRow; $row++) {
+                    $sheet->getRowDimension($row)->setRowHeight(34);
+                }
 
-                $kolomAwalTanggal = 4;
+                // Header tanggal: baris 2 = nama hari
+                // Header tanggal baris 1 sudah bernilai angka tanggal
 
-                $kolomAkhirTanggal =
-                    $this->jumlahTanggal + 3;
+                for ($col = $kolomAwalTanggal; $col <= $kolomAkhirTanggal; $col++) {
 
+                    $column = Coordinate::stringFromColumnIndex($col);
+                    $tanggal = Carbon::create($this->tahun, $this->bulan, $col - 3);
 
-                // =================================================
-                // WARNA HEADER TANGGAL
-                // =================================================
-
-                for (
-                    $col = $kolomAwalTanggal;
-                    $col <= $kolomAkhirTanggal;
-                    $col++
-                ) {
-
-                    $column =
-                        \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(
-                            $col
-                        );
-
-
-                    $tanggal = Carbon::create(
-                        $this->tahun,
-                        $this->bulan,
-                        $col - 3
-                    );
-
-
-                    // =================================================
-                    // SABTU / MINGGU
-                    // =================================================
-
+                    // Weekend header
                     if ($tanggal->isWeekend()) {
-
-                        $sheet->getStyle(
-                            "{$column}1"
-                        )->getFill()->setFillType(
-                            Fill::FILL_SOLID
-                        );
-
-                        $sheet->getStyle(
-                            "{$column}1"
-                        )->getFill()->getStartColor()
-                            ->setRGB('FECACA');
-
-                        $sheet->getStyle(
-                            "{$column}1"
-                        )->getFont()
-                            ->getColor()
-                            ->setRGB('B91C1C');
+                        for ($r = 1; $r <= 2; $r++) {
+                            $sheet->getStyle("{$column}{$r}")->getFill()->setFillType(Fill::FILL_SOLID);
+                            $sheet->getStyle("{$column}{$r}")->getFill()->getStartColor()->setRGB('FEE2E2');
+                            $sheet->getStyle("{$column}{$r}")->getFont()->getColor()->setRGB('B91C1C');
+                        }
                     }
 
+                    // Warna per cell data (mulai baris 3)
+                    for ($row = 3; $row <= $highestRow; $row++) {
+                        $cell = "{$column}{$row}";
+                        $value = $sheet->getCell($cell)->getValue();
 
-                    // =================================================
-                    // WARNA CELL STATUS
-                    // =================================================
+                        // Ambil kode = baris pertama sebelum newline
+                        $kode = trim(explode("\n", (string) $value)[0] ?? '');
 
-                    for (
-                        $row = 2;
-                        $row <= $highestRow;
-                        $row++
-                    ) {
-
-                        $cell =
-                            "{$column}{$row}";
-
-                        $kode =
-                            $sheet->getCell($cell)
-                                ->getValue();
-
-
-                        // =================================================
-                        // H = HADIR / SHIFT PAGI
-                        // =================================================
-
-                        if ($kode === 'H') {
-
-                            $sheet->getStyle($cell)
-                                ->getFill()
-                                ->setFillType(
-                                    Fill::FILL_SOLID
-                                );
-
-                            $sheet->getStyle($cell)
-                                ->getFill()
-                                ->getStartColor()
-                                ->setRGB(
-                                    'DCFCE7'
-                                );
-
-                            $sheet->getStyle($cell)
-                                ->getFont()
-                                ->getColor()
-                                ->setRGB(
-                                    '166534'
-                                );
-
-                            $sheet->getStyle($cell)
-                                ->getFont()
-                                ->setBold(true);
-                        }
-
-
-                        // =================================================
-                        // M = SHIFT MALAM
-                        // =================================================
-
-                        elseif ($kode === 'M') {
-
-                            $sheet->getStyle($cell)
-                                ->getFill()
-                                ->setFillType(
-                                    Fill::FILL_SOLID
-                                );
-
-                            $sheet->getStyle($cell)
-                                ->getFill()
-                                ->getStartColor()
-                                ->setRGB(
-                                    'DBEAFE'
-                                );
-
-                            $sheet->getStyle($cell)
-                                ->getFont()
-                                ->getColor()
-                                ->setRGB(
-                                    '1D4ED8'
-                                );
-
-                            $sheet->getStyle($cell)
-                                ->getFont()
-                                ->setBold(true);
-                        }
-
-
-                        // =================================================
-                        // LIB = LIBUR
-                        // =================================================
-
-                        elseif ($kode === 'LIB') {
-
-                            $sheet->getStyle($cell)
-                                ->getFill()
-                                ->setFillType(
-                                    Fill::FILL_SOLID
-                                );
-
-                            $sheet->getStyle($cell)
-                                ->getFill()
-                                ->getStartColor()
-                                ->setRGB(
-                                    'FECACA'
-                                );
-
-                            $sheet->getStyle($cell)
-                                ->getFont()
-                                ->getColor()
-                                ->setRGB(
-                                    'B91C1C'
-                                );
-
-                            $sheet->getStyle($cell)
-                                ->getFont()
-                                ->setBold(true);
+                        if (isset($palette[$kode])) {
+                            [$bg, $fg] = $palette[$kode];
+                            $sheet->getStyle($cell)->getFill()->setFillType(Fill::FILL_SOLID);
+                            $sheet->getStyle($cell)->getFill()->getStartColor()->setRGB($bg);
+                            $sheet->getStyle($cell)->getFont()->getColor()->setRGB($fg);
+                            $sheet->getStyle($cell)->getFont()->setBold(true);
                         }
                     }
                 }
 
+                // Warna kolom ringkasan
+                $summaryColors = [
+                    4 => ['D1FAE5', '065F46'], // Hadir
+                    5 => ['FEF3C7', '92400E'], // Cuti
+                    6 => ['FFEDD5', 'C2410C'], // CAP
+                    7 => ['FFE4E6', '9F1239'], // Sakit
+                    8 => ['E0F2FE', '075985'], // Lupa
+                    9 => ['FED7AA', '9A3412'], // Pending
+                ];
 
-                // =====================================================
-                // BORDER SELURUH TABEL
-                // =====================================================
+                foreach ($summaryColors as $offset => [$bg, $fg]) {
+                    $colIndex = $this->jumlahTanggal + $offset;
+                    $columnLetter = Coordinate::stringFromColumnIndex($colIndex);
 
-                $lastColumn =
-                    \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(
-                        $this->jumlahTanggal + 7
-                    );
+                    for ($row = 3; $row <= $highestRow; $row++) {
+                        $cell = "{$columnLetter}{$row}";
+                        $sheet->getStyle($cell)->getFill()->setFillType(Fill::FILL_SOLID);
+                        $sheet->getStyle($cell)->getFill()->getStartColor()->setRGB($bg);
+                        $sheet->getStyle($cell)->getFont()->getColor()->setRGB($fg);
+                        $sheet->getStyle($cell)->getFont()->setBold(true);
+                    }
+                }
 
+                // Border
+                $sheet->getStyle("A1:{$lastCol}{$highestRow}")
+                    ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+                $sheet->getStyle("A1:{$lastCol}{$highestRow}")
+                    ->getBorders()->getAllBorders()->getColor()->setRGB('CBD5E1');
 
-                $sheet->getStyle(
-                    "A1:{$lastColumn}{$highestRow}"
-                )->getBorders()
-                    ->getAllBorders()
-                    ->setBorderStyle(
-                        Border::BORDER_THIN
-                    );
+                $sheet->getStyle("D1:{$lastCol}{$highestRow}")
+                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-
-                // =====================================================
-                // CENTER KOLOM TANGGAL
-                // =====================================================
-
-                $sheet->getStyle(
-                    "D1:{$lastColumn}{$highestRow}"
-                )->getAlignment()
-                    ->setHorizontal(
-                        Alignment::HORIZONTAL_CENTER
-                    );
-
-
-                // =====================================================
-                // FREEZE HEADER
-                // =====================================================
-
-                $sheet->freezePane('D2');
+                // Freeze pane di baris 3 (setelah 2 baris header)
+                $sheet->freezePane('D3');
             },
         ];
     }
