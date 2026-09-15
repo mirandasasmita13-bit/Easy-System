@@ -66,10 +66,11 @@ use App\Http\Controllers\FileController;
     Route::get('/cuti-tambahan',  [CutiTambahanController::class, 'index'])->name('cuti_tambahan.index');
     Route::post('/cuti-tambahan', [CutiTambahanController::class, 'store'])->name('cuti_tambahan.store');
 
-// PROFIL (semua role)
+// PROFIL
     Route::get('/profil',      [ProfilController::class, 'index'])->name('profil.index');
     Route::get('/profil/edit', [ProfilController::class, 'edit'])->name('profil.edit');
     Route::put('/profil',      [ProfilController::class, 'update'])->name('profil.update');
+    Route::put('/profil/password', [ProfilController::class, 'updatePassword'])->name('profil.password');
 
 // REKAP ABSENSI SAYA (PPNPN)
     Route::get('/rekap-saya',              [RekapabsensiController::class, 'rekapSaya'])->name('rekap-saya');
@@ -78,6 +79,7 @@ use App\Http\Controllers\FileController;
 
 // Preview File (foto lembur, nukti, surat, dll)
     Route::get('/file/{type}/{id}', [\App\Http\Controllers\FileController::class, 'preview'])->name('file.preview');
+
 // ADMIN ONLY
     Route::middleware('role:admin')->group(function () {
 

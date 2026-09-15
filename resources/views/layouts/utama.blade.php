@@ -428,7 +428,6 @@
 
                 </a>
 
-
                 {{-- KELUAR --}}
                 <form method="POST" action="{{ route('logout') }}">
 
@@ -436,20 +435,12 @@
 
                     <button type="submit"
                             class="mt-3 flex w-full items-center gap-2 text-left text-xs text-purple-300 transition hover:text-white">
-
                         <span class="text-sm">↪</span>
-
                         Keluar
-
                     </button>
-
                 </form>
-
             </div>
-
         </div>
-
-
     </aside>
 
 
@@ -628,8 +619,6 @@
 
         @endif
 
-
-
         {{-- PEMISAH --}}
         <div class="my-2 h-px bg-white/10"></div>
 
@@ -659,9 +648,14 @@
 
         </form>
 
+        {{-- GANTI PASSWORD --}}
+                <a href="{{ url('/profil') }}#ganti-password"
+                    class="mt-2 flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-purple-300 transition hover:bg-white/5 hover:text-white">
+                        <span class="text-sm">🔑</span>
+                        Ganti Password
+                </a>
+
     </div>
-
-
 
     {{-- =========================================================
         KONTEN UTAMA
@@ -676,8 +670,6 @@
 
 </div>
 
-
-
 {{-- =========================================================
     SCRIPT MOBILE MENU
 ========================================================== --}}
@@ -691,7 +683,6 @@
         menu.classList.toggle('hidden');
 
     }
-
 
     document.addEventListener('click', function(event) {
 
@@ -708,8 +699,6 @@
     });
 
 </script>
-
-
 
 {{-- =========================================================
     STYLE MENU MOBILE

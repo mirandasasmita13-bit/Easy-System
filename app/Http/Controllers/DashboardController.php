@@ -16,11 +16,8 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        // =========================================================
         // DASHBOARD ADMIN
-        // =========================================================
         if ($user->role === 'admin') {
-
             $hariIni = Carbon::today();
 
             // PPNPN aktif & nonaktif

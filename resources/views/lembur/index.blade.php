@@ -4,10 +4,7 @@
 
 @section('content')
 
-{{-- ===================================================== --}}
 {{-- HEADER --}}
-{{-- ===================================================== --}}
-
 <div class="mb-6">
     <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
         Lembur
@@ -18,10 +15,7 @@
 </div>
 
 
-{{-- ===================================================== --}}
 {{-- PESAN --}}
-{{-- ===================================================== --}}
-
 @if(session('success'))
     <div class="mb-5 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
         {{ session('success') }}
@@ -46,10 +40,7 @@
 @endif
 
 
-{{-- ===================================================== --}}
-{{-- FORM LEMBUR
--- ===================================================== --}}
-
+{{-- FORM LEMBUR --}}
 <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm mb-5">
 
     <div class="flex items-start gap-3 mb-5">
@@ -69,50 +60,39 @@
     <form id="formLembur" action="{{ route('lembur.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
 
-        {{-- LOKASI TERSEMBUNYI --}}
         <input type="hidden" name="latitude" id="latitude">
         <input type="hidden" name="longitude" id="longitude">
 
-        {{-- ================= WAKTU ================= --}}
+        {{-- WAKTU --}}
         <div class="rounded-xl border border-slate-200 bg-slate-50/50 p-4 mb-4">
-
             <p class="text-xs font-bold text-slate-700 mb-3">Waktu Lembur</p>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-
-                {{-- TANGGAL --}}
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1.5">Tanggal</label>
                     <input type="date" name="tanggal" value="{{ old('tanggal') }}" required
                            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
                 </div>
-
-                {{-- JAM MULAI --}}
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1.5">Jam Mulai</label>
                     <input type="time" name="jam_mulai" value="{{ old('jam_mulai') }}" required
                            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
                 </div>
-
-                {{-- JAM SELESAI --}}
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 mb-1.5">Jam Selesai</label>
                     <input type="time" name="jam_selesai" value="{{ old('jam_selesai') }}" required
                            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
                 </div>
-
             </div>
-
         </div>
 
 
-        {{-- ================= KEGIATAN + FOTO (2 KOLOM) ================= --}}
+        {{-- KEGIATAN + FOTO --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
             {{-- KEGIATAN --}}
             <div class="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
                 <p class="text-xs font-bold text-slate-700 mb-3">Kegiatan</p>
-
                 <textarea name="kegiatan" rows="4" required
                           placeholder="Contoh: Penyelesaian laporan"
                           class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 placeholder:text-slate-400 outline-none resize-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">{{ old('kegiatan') }}</textarea>
@@ -121,17 +101,14 @@
 
             {{-- FOTO --}}
             <div class="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-
                 <p class="text-xs font-bold text-slate-700 mb-3">Foto Bukti Lembur</p>
 
                 <input id="fotoInput" type="file" name="foto" accept="image/*" capture="environment" class="hidden">
 
-                {{-- SEBELUM FOTO: tombol langsung buka kamera --}}
+                {{-- SEBELUM FOTO --}}
                 <div id="beforePhoto">
-
                     <button type="button" id="openCamera"
                             class="w-full rounded-xl border-2 border-dashed border-purple-200 bg-purple-50/60 px-4 py-6 flex flex-col items-center justify-center gap-2 hover:bg-purple-50 hover:border-purple-300 transition">
-
                         <div class="w-11 h-11 rounded-full bg-white text-purple-600 flex items-center justify-center shadow-sm">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                  stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
@@ -140,23 +117,22 @@
                                 <circle cx="12" cy="13" r="3" />
                             </svg>
                         </div>
-
                         <p class="text-sm font-bold text-purple-600">Ambil Foto</p>
                         <p class="text-[11px] text-slate-400">Kamera akan terbuka untuk mengambil bukti</p>
-
                     </button>
-
                     <p class="text-[11px] text-slate-400 mt-2 text-center">Maksimal ukuran foto 5 MB.</p>
-
                 </div>
-
 
                 {{-- SETELAH FOTO --}}
                 <div id="afterPhoto" class="hidden">
-
-                    <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                    <div id="photoWrapper"
+                         class="rounded-xl border border-slate-200 bg-white overflow-hidden cursor-pointer relative group"
+                         onclick="bukaModalFotoLembur('photoPreview')">
                         <img id="photoPreview" src="" alt="Foto bukti lembur"
                              class="w-full h-32 object-cover">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <span class="text-white text-xs font-bold">🔍 Lihat Foto</span>
+                        </div>
                     </div>
 
                     <button type="button" id="retakePhoto"
@@ -170,17 +146,13 @@
                     </button>
 
                     <p class="text-[11px] text-slate-400 mt-2 text-center">Foto sudah dilengkapi watermark.</p>
-
                 </div>
-
             </div>
-
         </div>
 
 
-        {{-- ================= LOKASI + SUBMIT ================= --}}
+        {{-- LOKASI + SUBMIT --}}
         <div class="border-t border-slate-100 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-
             <div>
                 <p id="locationStatus" class="text-xs text-slate-400">Mengecek lokasi...</p>
             </div>
@@ -189,20 +161,13 @@
                     class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 text-white text-sm font-bold shadow-md shadow-purple-200 hover:bg-purple-700 transition">
                 Simpan Lembur
             </button>
-
         </div>
-
     </form>
-
 </div>
 
 
-{{-- ===================================================== --}}
-{{-- RIWAYAT LEMBUR
--- ===================================================== --}}
-
+{{-- RIWAYAT LEMBUR --}}
 <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm">
-
     <div class="flex items-center justify-between mb-4">
         <div>
             <h3 class="text-base font-bold text-slate-900">Catatan Lembur</h3>
@@ -214,12 +179,10 @@
     </div>
 
     <div class="space-y-2">
-
         @forelse($riwayatLembur as $lembur)
 
             @php
                 $statusLembur = $lembur->status_approval ?? 'pending';
-
                 $borderClass = match($statusLembur) {
                     'approved' => 'border-emerald-200 bg-emerald-50/40',
                     'rejected' => 'border-red-200 bg-red-50/40',
@@ -228,12 +191,8 @@
             @endphp
 
             <div class="rounded-xl border {{ $borderClass }} p-3 sm:p-4">
-
                 <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-
                     <div class="min-w-0 flex-1">
-
-                        {{-- TANGGAL + STATUS --}}
                         <div class="flex flex-wrap items-center gap-2 mb-1.5">
                             <span class="text-sm font-bold text-slate-800">
                                 {{ $lembur->tanggal->translatedFormat('d M Y') }}
@@ -258,7 +217,6 @@
                             @endif
                         </div>
 
-                        {{-- JAM + TOTAL JAM --}}
                         <p class="text-xs text-slate-600 font-medium mb-1">
                             🕐 {{ substr($lembur->jam_mulai, 0, 5) }} – {{ substr($lembur->jam_selesai, 0, 5) }}
                             @if($lembur->total_jam)
@@ -268,17 +226,13 @@
                             @endif
                         </p>
 
-                        {{-- KEGIATAN --}}
-                        <p class="text-sm text-slate-700 truncate">
-                            {{ $lembur->kegiatan }}
-                        </p>
+                        <p class="text-sm text-slate-700 truncate">{{ $lembur->kegiatan }}</p>
 
                         @if($lembur->catatan_admin)
                             <p class="text-[11px] text-slate-500 mt-1.5 italic">
                                 Catatan: {{ $lembur->catatan_admin }}
                             </p>
                         @endif
-
                     </div>
 
                     @if($lembur->foto)
@@ -293,64 +247,63 @@
                             Lihat Foto
                         </a>
                     @endif
-
                 </div>
-
             </div>
 
         @empty
-
             <div class="rounded-xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center">
                 <p class="text-sm text-slate-500">Belum ada catatan lembur</p>
                 <p class="text-xs text-slate-400 mt-1">Data lembur kamu akan muncul di sini.</p>
             </div>
-
         @endforelse
-
     </div>
-
 </div>
 
 
-{{-- ===================================================== --}}
-{{-- MODAL KAMERA
--- ===================================================== --}}
-
+{{-- MODAL KAMERA --}}
 <div id="cameraModal" class="hidden fixed inset-0 z-[999] bg-black/75 p-4">
-
     <div class="min-h-full flex items-center justify-center">
-
         <div class="w-full max-w-md rounded-2xl bg-white overflow-hidden shadow-2xl">
 
-            {{-- HEADER --}}
             <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
                 <div>
                     <h3 class="text-sm font-bold text-slate-900">Ambil Foto Bukti</h3>
                     <p class="text-[11px] text-slate-400 mt-0.5">Pastikan kegiatan terlihat jelas.</p>
                 </div>
-
                 <button type="button" id="closeCamera"
                         class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">
                     ✕
                 </button>
             </div>
 
-            {{-- VIDEO --}}
+            {{-- VIDEO + WATERMARK LIVE (mengikuti layout canvas) --}}
             <div class="relative bg-black">
                 <video id="cameraVideo" autoplay playsinline muted
                        class="w-full aspect-[4/3] object-cover"></video>
 
-                {{-- WATERMARK PREVIEW --}}
-                <div class="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent px-3 py-2.5">
-                    <p class="text-[10px] font-bold tracking-wide text-purple-300">
-                        EASY SYSTEM · LEMBUR
+                <div class="pointer-events-none absolute inset-x-0 bottom-0 pt-16 px-4 pb-3"
+                     style="background: linear-gradient(to top, rgba(10,10,20,0.92) 0%, rgba(10,10,20,0.55) 45%, rgba(10,10,20,0) 100%);">
+
+                    <p class="text-[11px] font-bold tracking-wide text-purple-300 leading-tight">
+                        EASY SYSTEM <span class="text-purple-400/70">|</span> LEMBUR
                     </p>
-                    <p id="watermarkWaktu" class="text-xs font-bold text-white leading-tight">
-                        --
+
+                    <p id="wmTanggalJam" class="mt-1 text-sm font-bold text-white leading-tight">
+                        -- | --
                     </p>
-                    <p id="watermarkLokasi" class="text-[10px] text-slate-200 leading-tight mt-0.5">
-                        Lokasi belum diambil
+
+                    <p id="wmAlamat" class="mt-1 text-[10px] font-medium text-slate-100 leading-snug">
+                        {{ $kantorAlamat ?? 'Jl. Qurata Aini No.96, Nunang Antara, Kec. Bebesen, Kabupaten Aceh Tengah, Aceh 24519' }}
                     </p>
+
+                    <p id="wmJarak" class="mt-1 text-[11px] font-bold text-slate-100 leading-tight">
+                        Jarak: --
+                    </p>
+
+                    <p id="wmGps" class="text-[10px] font-medium text-slate-300 leading-tight">
+                        GPS: --
+                    </p>
+
                 </div>
             </div>
 
@@ -360,7 +313,6 @@
                 </div>
             </div>
 
-            {{-- BUTTON --}}
             <div class="p-4">
                 <button type="button" id="takePhoto"
                         class="w-full inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl text-sm font-bold shadow-md shadow-purple-200 transition">
@@ -373,27 +325,48 @@
                     Ambil Foto
                 </button>
             </div>
-
         </div>
-
     </div>
-
 </div>
 
-{{-- CANVAS --}}
 <canvas id="cameraCanvas" class="hidden"></canvas>
 
 
-{{-- ===================================================== --}}
-{{-- JAVASCRIPT
--- ===================================================== --}}
+{{-- MODAL LIHAT FOTO --}}
+<div id="modalFotoLembur" class="hidden fixed inset-0 z-[999] bg-black/90 items-center justify-center p-4"
+     onclick="tutupModalFotoLembur()">
 
+    <div class="relative max-w-2xl w-full max-h-[90vh] flex flex-col"
+         onclick="event.stopPropagation()">
+
+        <button type="button" onclick="tutupModalFotoLembur()"
+                class="absolute -top-12 right-0 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-2xl font-light transition">
+            ×
+        </button>
+
+        <div class="rounded-2xl overflow-hidden bg-black shadow-2xl">
+            <img id="modalFotoLemburImg" src="" alt="Foto lembur" class="w-full max-h-[80vh] object-contain">
+        </div>
+
+        <div class="mt-4 flex justify-center">
+            <a id="modalFotoLemburDownload" href="" download="lembur.jpg"
+               class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold transition"
+               onclick="event.stopPropagation();">
+                ⬇ Unduh Foto
+            </a>
+        </div>
+    </div>
+</div>
+
+
+{{-- JAVASCRIPT --}}
 <script>
 
 const OFFICE_LOKASI = {
     lat: 4.636822941619201,
     lng: 96.84824583097509,
-    radius: 200
+    radius: 200,
+    alamat: 'Jl. Qurata Aini No.96, Nunang Antara, Kec. Bebesen, Kabupaten Aceh Tengah, Aceh 24519'
 };
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -415,8 +388,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const longitudeInput= document.getElementById('longitude');
     const locationStatus= document.getElementById('locationStatus');
 
-    const watermarkWaktuEl  = document.getElementById('watermarkWaktu');
-    const watermarkLokasiEl = document.getElementById('watermarkLokasi');
+    const wmTanggalJam = document.getElementById('wmTanggalJam');
+    const wmAlamat     = document.getElementById('wmAlamat');
+    const wmJarak      = document.getElementById('wmJarak');
+    const wmGps        = document.getElementById('wmGps');
 
     let cameraStream = null;
 
@@ -426,9 +401,7 @@ document.addEventListener('DOMContentLoaded', function () {
     /* =================================================
        FORMAT JAM (HH:MM tanpa detik)
     ================================================= */
-
     function formatJamTanggal() {
-
         const now = new Date();
 
         const jam = now.toLocaleTimeString('id-ID', {
@@ -452,58 +425,61 @@ document.addEventListener('DOMContentLoaded', function () {
     /* =================================================
        HITUNG JARAK (Haversine)
     ================================================= */
-
     function hitungJarakMeter(lat1, lon1, lat2, lon2) {
-
         const R = 6371000;
         const toRad = (deg) => (deg * Math.PI) / 180;
 
         const dLat = toRad(lat2 - lat1);
         const dLon = toRad(lon2 - lon1);
 
-        const a =
-            Math.sin(dLat / 2) ** 2 +
-            Math.cos(toRad(lat1)) *
-            Math.cos(toRad(lat2)) *
-            Math.sin(dLon / 2) ** 2;
+        const a = Math.sin(dLat / 2) ** 2 +
+                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                  Math.sin(dLon / 2) ** 2;
 
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
 
     /* =================================================
-       UPDATE WATERMARK PREVIEW
+       UPDATE WATERMARK PREVIEW (LIVE)
     ================================================= */
-
     function updateWatermarkPreview() {
-
         const { jam, tanggal } = formatJamTanggal();
 
-        if (watermarkWaktuEl) {
-            watermarkWaktuEl.textContent = tanggal + ' · ' + jam + ' WIB';
+        if (wmTanggalJam) {
+            wmTanggalJam.textContent = tanggal + ' | ' + jam + ' WIB';
         }
 
-        if (!watermarkLokasiEl) return;
-
-        if (lokasiState.jarak === null) {
-            watermarkLokasiEl.textContent = 'Lokasi belum diambil';
-            return;
+        if (wmAlamat) {
+            wmAlamat.textContent = OFFICE_LOKASI.alamat;
         }
 
-        const dalamRadius = lokasiState.jarak <= OFFICE_LOKASI.radius;
+        if (wmJarak) {
+            if (lokasiState.jarak !== null) {
+                const dalam = lokasiState.jarak <= OFFICE_LOKASI.radius;
+                wmJarak.textContent = 'Jarak: ' + Math.round(lokasiState.jarak) + ' m dari kantor' +
+                    (dalam ? ' (dalam radius)' : ' (di luar radius)');
+                wmJarak.style.color = dalam ? '#86efac' : '#fca5a5';
+            } else {
+                wmJarak.textContent = 'Jarak: --';
+                wmJarak.style.color = '#e5e7eb';
+            }
+        }
 
-        watermarkLokasiEl.textContent =
-            Math.round(lokasiState.jarak) + ' m dari kantor · ' +
-            (dalamRadius ? 'dalam radius' : 'di luar radius');
+        if (wmGps) {
+            if (lokasiState.lat !== null && lokasiState.lng !== null) {
+                wmGps.textContent = 'GPS: ' + Number(lokasiState.lat).toFixed(6) + ', ' + Number(lokasiState.lng).toFixed(6);
+            } else {
+                wmGps.textContent = 'GPS: --';
+            }
+        }
     }
 
 
     /* =================================================
        AMBIL LOKASI
     ================================================= */
-
     function getLocation() {
-
         locationStatus.textContent = 'Mengecek lokasi...';
         locationStatus.className = 'text-xs text-slate-400';
 
@@ -514,19 +490,14 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         navigator.geolocation.getCurrentPosition(
-
             function (position) {
-
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
 
                 latitudeInput.value = lat;
                 longitudeInput.value = lng;
 
-                const jarak = hitungJarakMeter(
-                    OFFICE_LOKASI.lat, OFFICE_LOKASI.lng,
-                    lat, lng
-                );
+                const jarak = hitungJarakMeter(OFFICE_LOKASI.lat, OFFICE_LOKASI.lng, lat, lng);
 
                 lokasiState.lat = lat;
                 lokasiState.lng = lng;
@@ -544,18 +515,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 updateWatermarkPreview();
             },
-
             function (error) {
-
                 console.error(error);
-
                 latitudeInput.value = '';
                 longitudeInput.value = '';
-
                 locationStatus.textContent = 'Izinkan akses lokasi untuk melanjutkan.';
                 locationStatus.className = 'text-xs text-red-600';
             },
-
             { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
     }
@@ -564,9 +530,7 @@ document.addEventListener('DOMContentLoaded', function () {
     /* =================================================
        BUKA / TUTUP KAMERA
     ================================================= */
-
     async function startCamera() {
-
         cameraError.classList.add('hidden');
 
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -584,97 +548,117 @@ document.addEventListener('DOMContentLoaded', function () {
             await cameraVideo.play();
 
             updateWatermarkPreview();
-
         } catch (error) {
             console.error('Camera error:', error);
             cameraError.classList.remove('hidden');
         }
     }
 
-
     function stopCamera() {
-
         if (cameraStream) {
             cameraStream.getTracks().forEach(track => track.stop());
             cameraStream = null;
         }
-
         cameraVideo.srcObject = null;
     }
 
 
     /* =================================================
-       GAMBAR WATERMARK DI FOTO
+       GAMBAR WATERMARK DI FOTO (layout seperti contoh)
     ================================================= */
-
     function gambarWatermark(context, width, height) {
-
         const { jam, tanggal } = formatJamTanggal();
 
-        const lokasiText = (lokasiState.lat !== null && lokasiState.lng !== null)
+        const gpsText = (lokasiState.lat !== null && lokasiState.lng !== null)
             ? Number(lokasiState.lat).toFixed(6) + ', ' + Number(lokasiState.lng).toFixed(6)
-            : 'Lokasi tidak tersedia';
+            : '--';
 
         const dalamRadius = lokasiState.jarak !== null && lokasiState.jarak <= OFFICE_LOKASI.radius;
 
         const jarakText = (lokasiState.jarak !== null)
-            ? Math.round(lokasiState.jarak) + ' m dari kantor (' +
-              (dalamRadius ? 'dalam radius' : 'di luar radius') + ')'
-            : 'Jarak tidak diketahui';
+            ? 'Jarak: ' + Math.round(lokasiState.jarak) + ' m dari kantor' + (dalamRadius ? ' (dalam radius)' : ' (di luar radius)')
+            : 'Jarak: --';
 
-        const barHeight = Math.max(90, Math.round(height * 0.24));
+        const barHeight = Math.max(160, Math.round(height * 0.34));
+        const paddingX  = Math.round(width * 0.05);
+
+        const fontHeader = Math.max(13, Math.round(width * 0.032));
+        const fontMain   = Math.max(17, Math.round(width * 0.042));
+        const fontSub    = Math.max(12, Math.round(width * 0.028));
+        const fontSmall  = Math.max(11, Math.round(width * 0.026));
+        const lineGap    = Math.max(20, Math.round(width * 0.042));
 
         const gradient = context.createLinearGradient(0, height - barHeight, 0, height);
-        gradient.addColorStop(0, 'rgba(10, 10, 20, 0)');
-        gradient.addColorStop(1, 'rgba(10, 10, 20, 0.85)');
+        gradient.addColorStop(0,    'rgba(10, 10, 20, 0)');
+        gradient.addColorStop(0.30, 'rgba(10, 10, 20, 0.60)');
+        gradient.addColorStop(1,    'rgba(10, 10, 20, 0.92)');
 
         context.fillStyle = gradient;
         context.fillRect(0, height - barHeight, width, barHeight);
 
-        const paddingX  = Math.round(width * 0.04);
-        const fontLabel = Math.max(11, Math.round(width * 0.026));
-        const fontMain  = Math.max(15, Math.round(width * 0.036));
-        const fontSub   = Math.max(11, Math.round(width * 0.027));
-        const lineGap   = Math.max(18, Math.round(width * 0.038));
+        const maxWidth = width - (paddingX * 2);
 
-        let y = height - barHeight + lineGap * 0.9;
+        function fitText(text, font, maxW) {
+            context.font = font;
+            if (context.measureText(text).width <= maxW) return text;
+            let out = text;
+            while (out.length > 0 && context.measureText(out + '...').width > maxW) {
+                out = out.slice(0, -1);
+            }
+            return out + '...';
+        }
 
+        let y = height - barHeight + lineGap * 1.0;
         context.textBaseline = 'alphabetic';
 
+        // 1) HEADER
         context.fillStyle = '#c4b5fd';
-        context.font = '700 ' + fontLabel + 'px sans-serif';
-        context.fillText('EASY SYSTEM · LEMBUR', paddingX, y);
+        context.font = '700 ' + fontHeader + 'px Arial, sans-serif';
+        context.fillText('EASY SYSTEM  |  LEMBUR', paddingX, y);
 
+        // 2) TANGGAL + JAM
         y += lineGap;
         context.fillStyle = '#ffffff';
-        context.font = '700 ' + fontMain + 'px sans-serif';
-        context.fillText(tanggal + ' · ' + jam + ' WIB', paddingX, y);
+        context.font = '700 ' + fontMain + 'px Arial, sans-serif';
+        context.fillText(
+            fitText(tanggal + ' | ' + jam + ' WIB', '700 ' + fontMain + 'px Arial, sans-serif', maxWidth),
+            paddingX, y
+        );
 
-        y += lineGap * 0.9;
-        context.fillStyle = '#e5e7eb';
-        context.font = '500 ' + fontSub + 'px sans-serif';
-        context.fillText(lokasiText, paddingX, y);
+        // 3) ALAMAT
+        y += lineGap * 0.95;
+        context.fillStyle = '#f1f5f9';
+        context.font = '500 ' + fontSmall + 'px Arial, sans-serif';
+        context.fillText(
+            fitText(OFFICE_LOKASI.alamat, '500 ' + fontSmall + 'px Arial, sans-serif', maxWidth),
+            paddingX, y
+        );
 
+        // 4) JARAK
         y += lineGap * 0.9;
         context.fillStyle = dalamRadius ? '#86efac' : '#fca5a5';
-        context.font = '700 ' + fontSub + 'px sans-serif';
-        context.fillText(jarakText, paddingX, y);
+        context.font = '700 ' + fontSub + 'px Arial, sans-serif';
+        context.fillText(
+            fitText(jarakText, '700 ' + fontSub + 'px Arial, sans-serif', maxWidth),
+            paddingX, y
+        );
+
+        // 5) GPS
+        y += lineGap * 0.85;
+        context.fillStyle = '#cbd5e1';
+        context.font = '500 ' + fontSmall + 'px Arial, sans-serif';
+        context.fillText('GPS: ' + gpsText, paddingX, y);
     }
 
 
     /* =================================================
        BUKA MODAL KAMERA
     ================================================= */
-
     openCamera.addEventListener('click', function () {
-
         getLocation();
-
         cameraModal.classList.remove('hidden');
-
         startCamera();
     });
-
 
     closeCamera.addEventListener('click', function () {
         stopCamera();
@@ -685,9 +669,7 @@ document.addEventListener('DOMContentLoaded', function () {
     /* =================================================
        AMBIL FOTO
     ================================================= */
-
     takePhoto.addEventListener('click', function () {
-
         if (!cameraStream) return;
 
         const width  = cameraVideo.videoWidth;
@@ -707,18 +689,12 @@ document.addEventListener('DOMContentLoaded', function () {
         gambarWatermark(context, width, height);
 
         cameraCanvas.toBlob(function (blob) {
-
             if (!blob) {
                 alert('Foto gagal diambil.');
                 return;
             }
 
-            const file = new File(
-                [blob],
-                'foto-lembur-' + Date.now() + '.jpg',
-                { type: 'image/jpeg' }
-            );
-
+            const file = new File([blob], 'foto-lembur-' + Date.now() + '.jpg', { type: 'image/jpeg' });
             const dt = new DataTransfer();
             dt.items.add(file);
             fotoInput.files = dt.files;
@@ -730,7 +706,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             stopCamera();
             cameraModal.classList.add('hidden');
-
         }, 'image/jpeg', 0.92);
     });
 
@@ -738,9 +713,7 @@ document.addEventListener('DOMContentLoaded', function () {
     /* =================================================
        AMBIL ULANG FOTO
     ================================================= */
-
     retakePhoto.addEventListener('click', function () {
-
         fotoInput.value = '';
         photoPreview.src = '';
 
@@ -748,18 +721,46 @@ document.addEventListener('DOMContentLoaded', function () {
         beforePhoto.classList.remove('hidden');
 
         cameraModal.classList.remove('hidden');
-
         getLocation();
         startCamera();
     });
 
 
     /* =================================================
+       MODAL LIHAT FOTO
+    ================================================= */
+    window.bukaModalFotoLembur = function(imageId) {
+        const imgElement = document.getElementById(imageId);
+        if (!imgElement || !imgElement.src) return;
+
+        const modalImg = document.getElementById('modalFotoLemburImg');
+        const modalDl  = document.getElementById('modalFotoLemburDownload');
+        const modal    = document.getElementById('modalFotoLembur');
+
+        modalImg.src = imgElement.src;
+        modalDl.href = imgElement.src;
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.tutupModalFotoLembur = function() {
+        const modal = document.getElementById('modalFotoLembur');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.style.overflow = '';
+    };
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') window.tutupModalFotoLembur();
+    });
+
+
+    /* =================================================
        SUBMIT
     ================================================= */
-
     form.addEventListener('submit', function (event) {
-
         if (!latitudeInput.value || !longitudeInput.value) {
             event.preventDefault();
             alert('Lokasi belum diperoleh. Izinkan akses lokasi terlebih dahulu.');
@@ -778,7 +779,6 @@ document.addEventListener('DOMContentLoaded', function () {
     /* =================================================
        KLIK DI LUAR MODAL
     ================================================= */
-
     cameraModal.addEventListener('click', function (event) {
         if (event.target === cameraModal) {
             stopCamera();
@@ -790,7 +790,6 @@ document.addEventListener('DOMContentLoaded', function () {
     /* =================================================
        MATIKAN KAMERA SAAT PINDAH HALAMAN
     ================================================= */
-
     window.addEventListener('beforeunload', function () {
         stopCamera();
     });
@@ -799,7 +798,6 @@ document.addEventListener('DOMContentLoaded', function () {
     /* =================================================
        CEK LOKASI SAAT HALAMAN DIBUKA
     ================================================= */
-
     getLocation();
 
 });

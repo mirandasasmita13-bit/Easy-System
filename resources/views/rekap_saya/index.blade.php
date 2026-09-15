@@ -132,7 +132,6 @@
 
     <div class="px-5 sm:px-6 py-5 border-b border-slate-100">
         <h3 class="text-lg font-bold text-slate-900">Rekap Kehadiran Saya</h3>
-        <p class="text-sm text-slate-400 mt-1">Kode · jam masuk (↓) · jam pulang (↑) ditampilkan di setiap tanggal.</p>
     </div>
 
     <div class="overflow-x-auto">
