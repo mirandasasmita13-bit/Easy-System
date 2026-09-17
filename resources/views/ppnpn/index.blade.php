@@ -20,18 +20,18 @@
     {{-- PESAN --}}
     @if(session('success'))
         <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {{ session('success') }}
+            ✅ {{ session('success') }}
         </div>
     @endif
 
     @if(session('error'))
         <div class="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {{ session('error') }}
+            ⚠️ {{ session('error') }}
         </div>
     @endif
 
 
-    {{-- STATISTIK (3 CARD SERAGAM) --}}
+    {{-- STATISTIK (3 CARD) --}}
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
         {{-- AKTIF --}}
@@ -60,12 +60,13 @@
             </div>
         </div>
 
-        {{-- TOTAL (hanya aktif) --}}
+        {{-- TOTAL --}}
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-sm text-gray-500">Total PPNPN</p>
-                    <p class="mt-1 text-3xl font-bold text-purple-600">{{ $countAktif }}</p>
+                    <p class="mt-1 text-3xl font-bold text-purple-600">{{ $countSemua }}</p>
+                    <p class="text-xs text-gray-400 mt-1">Aktif + Nonaktif</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 text-sm font-bold">
                     Σ
@@ -93,7 +94,6 @@
                     </p>
                 </div>
 
-
                 {{-- SEARCH --}}
                 <div class="relative w-full lg:w-72">
                     <input type="text" id="searchPpnpn"
@@ -109,7 +109,7 @@
             </div>
 
 
-            {{-- FILTER TAB --}}
+            {{-- FILTER TAB (3 TAB) --}}
             <div class="mt-4 flex flex-wrap gap-2">
                 <a href="{{ route('ppnpn.index', ['filter' => 'semua']) }}"
                    class="px-4 py-2 rounded-lg text-sm font-medium transition
@@ -137,11 +137,9 @@
         </div>
 
 
-        {{-- TABLE --}}
+        {{-- TABEL PPNPN --}}
         <div class="overflow-x-auto">
-
             <table class="w-full text-sm">
-
                 <thead class="bg-gray-50 border-b border-gray-100">
                     <tr class="text-left text-gray-500">
                         <th class="px-6 py-4 font-semibold w-16">No</th>
@@ -153,11 +151,8 @@
                     </tr>
                 </thead>
 
-
                 <tbody id="ppnpnTable" class="divide-y divide-gray-100">
-
                     @forelse($ppnpn as $index => $item)
-
                         <tr class="ppnpn-row hover:bg-gray-50/70 {{ $item->status === 'nonaktif' ? 'opacity-60' : '' }}"
                             data-search="{{ strtolower(
                                 $item->name . ' ' .
@@ -165,13 +160,8 @@
                                 ($item->profil?->nik ?? '')
                             ) }}">
 
-                            {{-- NO --}}
-                            <td class="px-6 py-5 text-gray-500">
-                                {{ $index + 1 }}
-                            </td>
+                            <td class="px-6 py-5 text-gray-500">{{ $index + 1 }}</td>
 
-
-                            {{-- NAMA --}}
                             <td class="px-6 py-5">
                                 <div class="flex items-center gap-3">
                                     @if($item->profil?->foto)
@@ -183,7 +173,6 @@
                                             {{ strtoupper(substr($item->name, 0, 1)) }}
                                         </div>
                                     @endif
-
                                     <div>
                                         <p class="font-semibold text-gray-800">{{ $item->name }}</p>
                                         <p class="text-xs text-gray-400 mt-0.5">PPNPN</p>
@@ -191,20 +180,14 @@
                                 </div>
                             </td>
 
-
-                            {{-- NIK --}}
                             <td class="px-6 py-5 text-gray-600">
                                 {{ $item->profil?->nik ?? '-' }}
                             </td>
 
-
-                            {{-- USERNAME --}}
                             <td class="px-6 py-5 text-gray-600">
                                 {{ $item->username ?? '-' }}
                             </td>
 
-
-                            {{-- STATUS --}}
                             <td class="px-6 py-5 text-center">
                                 @if($item->status === 'aktif')
                                     <span class="inline-flex px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
@@ -222,11 +205,8 @@
                                 @endif
                             </td>
 
-
-                            {{-- AKSI --}}
                             <td class="px-6 py-5 text-center">
                                 <div class="inline-flex gap-2">
-
                                     {{-- LIHAT --}}
                                     <button type="button"
                                             onclick="openPpnpnModal(
@@ -243,7 +223,7 @@
                                     @if($item->status === 'aktif')
                                         <form action="{{ route('ppnpn.nonaktifkan', $item->id) }}"
                                               method="POST"
-                                              onsubmit="return confirm('Nonaktifkan {{ $item->name }}? Data tidak akan dihapus, hanya statusnya berubah.')">
+                                              onsubmit="return confirm('Nonaktifkan {{ $item->name }}?')">
                                             @csrf
                                             <button type="submit"
                                                     class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-red-50 text-red-700 text-xs font-medium hover:bg-red-100 transition">
@@ -261,14 +241,11 @@
                                             </button>
                                         </form>
                                     @endif
-
                                 </div>
                             </td>
 
                         </tr>
-
                     @empty
-
                         <tr>
                             <td colspan="6" class="px-6 py-14 text-center">
                                 <div class="text-gray-400">
@@ -281,13 +258,9 @@
                                 </div>
                             </td>
                         </tr>
-
                     @endforelse
-
                 </tbody>
-
             </table>
-
         </div>
 
     </div>
@@ -295,15 +268,13 @@
 </div>
 
 
-{{-- MODAL DETAIL PPNPN --}}
+{{-- =====================================================
+     MODAL DETAIL PPNPN
+===================================================== --}}
 <div id="ppnpnModal" class="fixed inset-0 z-50 hidden">
-
     <div class="absolute inset-0 bg-black/40" onclick="closePpnpnModal()"></div>
-
     <div class="relative flex min-h-full items-center justify-center p-4">
-
         <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
-
             <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                 <div>
                     <h3 class="text-lg font-semibold text-gray-800">Detail PPNPN</h3>
@@ -316,23 +287,19 @@
                     </svg>
                 </button>
             </div>
-
             <div class="px-6 py-6">
-
                 <div class="flex justify-center">
                     <img id="modalPhoto" src="" alt="Foto PPNPN"
                          class="hidden w-24 h-24 rounded-full object-cover border border-gray-200">
                     <div id="modalInitial"
                          class="w-24 h-24 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-3xl font-semibold"></div>
                 </div>
-
                 <div class="text-center mt-4">
                     <h4 id="modalName" class="text-xl font-bold text-gray-800">-</h4>
                     <span class="inline-flex mt-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold">
                         PPNPN
                     </span>
                 </div>
-
                 <div class="mt-6 space-y-4">
                     <div>
                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wide">NIK</p>
@@ -343,23 +310,21 @@
                         <p id="modalEmail" class="mt-1 text-sm font-medium text-gray-800 break-all">-</p>
                     </div>
                 </div>
-
             </div>
-
             <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
                 <button type="button" onclick="closePpnpnModal()"
                         class="px-4 py-2 rounded-lg bg-white border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-100 transition">
                     Tutup
                 </button>
             </div>
-
         </div>
-
     </div>
-
 </div>
 
 
+{{-- =====================================================
+     JAVASCRIPT
+===================================================== --}}
 <script>
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -372,11 +337,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const keyword = this.value.toLowerCase().trim();
             rows.forEach(row => {
                 const searchText = row.dataset.search || '';
-                if (searchText.includes(keyword)) {
-                    row.classList.remove('hidden');
-                } else {
-                    row.classList.add('hidden');
-                }
+                row.classList.toggle('hidden', !searchText.includes(keyword));
             });
         });
     }
@@ -384,6 +345,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
+/* MODAL DETAIL PPNPN */
 function openPpnpnModal(name, username, nik, foto) {
     const modal = document.getElementById('ppnpnModal');
     document.getElementById('modalName').textContent = name;
@@ -407,13 +369,13 @@ function openPpnpnModal(name, username, nik, foto) {
     document.body.classList.add('overflow-hidden');
 }
 
-
 function closePpnpnModal() {
     document.getElementById('ppnpnModal').classList.add('hidden');
     document.body.classList.remove('overflow-hidden');
 }
 
 
+/* ESC */
 document.addEventListener('keydown', function (event) {
     if (event.key === 'Escape') closePpnpnModal();
 });

@@ -122,6 +122,21 @@
 
                 </a>
 
+                {{-- MANAJEMEN CUTI --}}
+                <a href="{{ url('/manajemen-cuti') }}"
+                class="flex items-center gap-4 rounded-xl px-4 py-3 transition
+                        {{ request()->is('manajemen-cuti*')
+                            ? 'bg-purple-500/20 text-white'
+                            : 'text-purple-100 hover:bg-white/5' }}">
+
+                    <span class="text-sm {{ request()->is('manajemen-cuti*') ? 'text-purple-300' : 'text-purple-400' }}">
+                        {{ request()->is('manajemen-cuti*') ? '●' : '○' }}
+                    </span>
+
+                    <span class="text-sm font-medium">Manajemen Cuti</span>
+
+                </a>
+
 
                 {{-- REKAP ABSENSI --}}
                 <a href="{{ url('/rekap') }}"
@@ -503,6 +518,13 @@
                     {{ request()->is('ppnpn*') ? '●' : '○' }}
                 </span>
                 Data PPNPN
+            </a>
+
+            <a href="{{ url('/manajemen-cuti') }}" class="mobile-menu-item">
+                <span class="text-purple-300">
+                    {{ request()->is('manajemen-cuti*') ? '●' : '○' }}
+                </span>
+                Manajemen Cuti
             </a>
 
             <a href="{{ url('/rekap') }}" class="mobile-menu-item">

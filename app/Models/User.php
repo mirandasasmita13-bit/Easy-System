@@ -90,28 +90,46 @@ class User extends Authenticatable
         return $query->where('role', 'ppnpn');
     }
 
-    // --- HELPER: HITUNG CUTI ---
+/**
+ * Cuti tahunan yang diinput admin (sebelum sistem berjalan).
+ */
+    public function cutiManualDiTahun(): int
+    {
+        return $this->cutiSebelumnya()
+            ->whereYear('tanggal_mulai', $this->tahun_cuti)
+            ->where('jenis_cuti', 'tahunan')
+            ->sum('jumlah_hari');
+    }
 
 /**
- * Total cuti tahunan yang tercatat di sistem
- * pada tahun cuti user.
+ * Cuti tahunan dari pengajuan PPNPN di sistem.
  */
-public function cutiTahunanDiSistem(): int
-{
-    return $this->pengajuancuti()
-        ->where('jenis_cuti', 'tahunan')
-        ->whereYear('tanggal_mulai', $this->tahun_cuti)  // ← pakai tahun_cuti
-        ->sum('jumlah_hari');
-}
+    public function cutiTahunanDiSistem(): int
+    {
+        return $this->pengajuancuti()
+            ->where('jenis_cuti', 'tahunan')
+            ->whereYear('tanggal_mulai', $this->tahun_cuti)
+            ->sum('jumlah_hari');
+    }
 
-public function sisaCutiTahunan(): int
-{
-    $terpakai = $this->cuti_tahunan_sebelumnya + $this->cutiTahunanDiSistem();
-    return max(0, $this->jatah_cuti_tahunan - $terpakai);
-}
+/**
+ * Total cuti tahunan terpakai = manual + sistem.
+ */
+    public function totalCutiTerpakai(): int
+    {
+        return $this->cutiManualDiTahun() + $this->cutiTahunanDiSistem();
+    }
 
-public function totalCutiTerpakai(): int
-{
-    return $this->cuti_tahunan_sebelumnya + $this->cutiTahunanDiSistem();
-}
+/**
+ * Sisa cuti tahunan.
+ */
+    public function sisaCutiTahunan(): int
+    {
+        return max(0, $this->jatah_cuti_tahunan - $this->totalCutiTerpakai());
+    }
+
+    public function cutiSebelumnya(): HasMany
+    {
+        return $this->hasMany(CutiSebelumnya::class, 'user_id');
+    }
 }

@@ -288,14 +288,5 @@
             </tbody>
         </table>
     </div>
-
-    <div class="px-5 sm:px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-        <p class="text-xs text-slate-400">
-            Setiap tanggal menampilkan <strong>kode</strong>, <strong>↓ jam masuk</strong>, dan <strong>↑ jam pulang</strong>.
-            Sabtu dan Minggu ditandai sebagai hari libur. Absensi <strong>pending</strong> tidak dihitung sebagai kehadiran.
-            Lupa absen yang <strong>sudah disetujui</strong> otomatis dihitung sebagai kehadiran.
-        </p>
-    </div>
 </div>
-
 @endsection
