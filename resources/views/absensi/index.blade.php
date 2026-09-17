@@ -737,7 +737,7 @@
                         }
                         if (ulang) document.getElementById(ulang).classList.remove('hidden');
                         if (keterangan) document.getElementById(keterangan).textContent =
-                            'Foto berhasil diambil (watermark: waktu, lokasi & jarak).';
+                            'Foto berhasil diambil.';
 
                         tutupKamera();
 

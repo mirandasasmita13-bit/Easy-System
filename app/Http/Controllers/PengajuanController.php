@@ -35,7 +35,7 @@ class PengajuanController extends Controller
         $perluReset    = false;
         $tahunSekarang = now()->year;
 
-        // TAB: LEMBUR
+        // TAB: LEMBURcoba jell
         if ($tab === 'lembur') {
             $pending = Lembur::with('user')
                 ->where('status_approval', 'pending')

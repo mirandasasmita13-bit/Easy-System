@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exports\RekapabsensiExport;
 use App\Exports\RekapSayaExport;
 use App\Models\Absensi;
+use App\Models\Lembur;
 use App\Models\Pengajuancuti;
 use App\Models\Pengajuanlupaabsen;
 use App\Models\Pengajuansurat;
@@ -17,8 +18,13 @@ use Maatwebsite\Excel\Facades\Excel;
 class RekapabsensiController extends Controller
 {
     /* =========================================================
-       HELPER: Susun data absensi (dipisah valid vs pending)
+       HELPER
        ========================================================= */
+
+    /**
+     * Susun data absensi per-user / per-tanggal.
+     * TIDAK dipakai untuk hitung statistik — hanya untuk tampilan matrix.
+     */
     private function susunAbsensi($absensiData, bool $perUser = true): array
     {
         $absensi      = [];
@@ -43,6 +49,158 @@ class RekapabsensiController extends Controller
         return [$absensi, $absensiHadir];
     }
 
+    /**
+     * Cek apakah pengajuan lupa absen sudah disetujui.
+     * Support berbagai variasi field & value.
+     */
+    private function isLupaApproved($lupa): bool
+    {
+        if (!$lupa) return false;
+
+        $approved = ['approved', 'disetujui', 'diterima', 'setuju', 'accept', 'accepted', 'terima'];
+
+        foreach (['status', 'status_approval', 'status_pengajuan', 'approval_status', 'status_verifikasi'] as $field) {
+            if (!isset($lupa->$field)) continue;
+            $val = strtolower(trim((string) $lupa->$field));
+            if (in_array($val, $approved, true)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * RULE UTAMA — tentukan kode & hitung per tanggal.
+     * Dipakai SEMUA method (view, PDF, Excel) supaya konsisten.
+     */
+    private function evaluasiHari($tgl, $absensiHariIni, $cutiHariIni, $lupaHariIni, $sakitHariIni): array
+    {
+        $lupaApproved = $this->isLupaApproved($lupaHariIni);
+
+        $absensiValid = $absensiHariIni
+            && $absensiHariIni->jam_masuk
+            && ($absensiHariIni->status_approval !== 'pending' || $lupaApproved);
+
+        $absensiPending = $absensiHariIni
+            && $absensiHariIni->status_approval === 'pending'
+            && !$lupaApproved;
+
+        $kode      = '-';
+        $kategori  = 'kosong';
+        $jamMasuk  = null;
+        $jamPulang = null;
+
+        if ($tgl->isWeekend()) {
+            if ($absensiValid) {
+                if ($absensiHariIni->shift === 'malam') {
+                    $kode = 'M'; $kategori = 'malam';
+                } else {
+                    $kode = 'H'; $kategori = 'hadir';
+                }
+                $jamMasuk  = $absensiHariIni->jam_masuk;
+                $jamPulang = $absensiHariIni->jam_pulang;
+            } elseif ($absensiPending) {
+                $kode = 'P'; $kategori = 'pending';
+                $jamMasuk = $absensiHariIni->jam_masuk;
+            } else {
+                $kode = 'LIB'; $kategori = 'libur';
+            }
+        } else {
+            if ($sakitHariIni) {
+                $kode = 'S'; $kategori = 'sakit';
+            } elseif ($cutiHariIni) {
+                if ($cutiHariIni->jenis_cuti === 'alasan_penting') {
+                    $kode = 'CAP'; $kategori = 'cap';
+                } else {
+                    $kode = 'C'; $kategori = 'cuti';
+                }
+            } elseif ($absensiValid) {
+                if ($absensiHariIni->shift === 'malam') {
+                    $kode = 'M'; $kategori = 'malam';
+                } else {
+                    $kode = 'H'; $kategori = 'hadir';
+                }
+                $jamMasuk  = $absensiHariIni->jam_masuk;
+                $jamPulang = $absensiHariIni->jam_pulang;
+            } elseif ($lupaApproved) {
+                $kode = 'H'; $kategori = 'hadir';
+            } elseif ($lupaHariIni && !$absensiPending) {
+                $kode = 'LA'; $kategori = 'lupa';
+            } elseif ($absensiPending) {
+                $kode = 'P'; $kategori = 'pending';
+                $jamMasuk = $absensiHariIni->jam_masuk;
+            }
+        }
+
+        return [
+            'kode'        => $kode,
+            'kategori'    => $kategori,
+            'jam_masuk'   => $jamMasuk,
+            'jam_pulang'  => $jamPulang,
+            'is_pending'  => $absensiPending,
+            'lupa_approved' => $lupaApproved,
+        ];
+    }
+
+    /**
+     * Hitung statistik dari hasil evaluasi.
+     */
+    private function hitungStatistik($tanggal, $absensi, $cuti, $lupaAbsen, $suratSakit, $perUser = false, $userId = null): array
+    {
+        $stat = [
+            'hadir'             => 0,
+            'cuti_tahunan'      => 0,
+            'cuti_alasan'       => 0,
+            'sakit'             => 0,
+            'lupa'              => 0,
+            'pending'           => 0,
+            'libur'             => 0,
+        ];
+
+        foreach ($tanggal as $tgl) {
+            $tanggalKey = $tgl->format('Y-m-d');
+
+            if ($perUser) {
+                $absensiHariIni = $absensi[$userId][$tanggalKey] ?? null;
+                $cutiHariIni    = $cuti[$userId][$tanggalKey] ?? null;
+                $lupaHariIni    = $lupaAbsen[$userId][$tanggalKey] ?? null;
+                $sakitHariIni   = $suratSakit[$userId][$tanggalKey] ?? null;
+            } else {
+                $absensiHariIni = $absensi[$tanggalKey] ?? null;
+                $cutiHariIni    = $cuti[$tanggalKey] ?? null;
+                $lupaHariIni    = $lupaAbsen[$tanggalKey] ?? null;
+                $sakitHariIni   = $suratSakit[$tanggalKey] ?? null;
+            }
+
+            $hasil = $this->evaluasiHari($tgl, $absensiHariIni, $cutiHariIni, $lupaHariIni, $sakitHariIni);
+
+            switch ($hasil['kategori']) {
+                case 'hadir':
+                case 'malam':
+                    $stat['hadir']++;
+                    break;
+                case 'cuti':
+                    $stat['cuti_tahunan']++;
+                    break;
+                case 'cap':
+                    $stat['cuti_alasan']++;
+                    break;
+                case 'sakit':
+                    $stat['sakit']++;
+                    break;
+                case 'lupa':
+                    $stat['lupa']++;
+                    break;
+                case 'pending':
+                    $stat['pending']++;
+                    break;
+                case 'libur':
+                    $stat['libur']++;
+                    break;
+            }
+        }
+
+        return $stat;
+    }
+
 
     /* =========================================================
        REKAP ABSENSI ADMIN
@@ -62,13 +220,11 @@ class RekapabsensiController extends Controller
             $hari->addDay();
         }
 
-        // PPNPN AKTIF SAJA
         $ppnpn = User::where('role', 'ppnpn')
             ->where('status', 'aktif')
             ->orderBy('name')
             ->get();
 
-        // ABSENSI
         $absensiData = Absensi::whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
@@ -80,7 +236,7 @@ class RekapabsensiController extends Controller
 
         [$absensi, $absensiHadir] = $this->susunAbsensi($absensiData, true);
 
-        // CUTI (hanya hari kerja)
+        // CUTI
         $cutiData = Pengajuancuti::whereDate('tanggal_mulai', '<=', $tanggalAkhir)
             ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
             ->whereHas('user', function ($q) {
@@ -92,7 +248,6 @@ class RekapabsensiController extends Controller
         foreach ($cutiData as $item) {
             $mulai   = Carbon::parse($item->tanggal_mulai);
             $selesai = Carbon::parse($item->tanggal_selesai);
-
             while ($mulai->lte($selesai)) {
                 if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
                     $cuti[$item->user_id][$mulai->format('Y-m-d')] = $item;
@@ -289,6 +444,7 @@ class RekapabsensiController extends Controller
             $hari->addDay();
         }
 
+        // ABSENSI
         $absensiData = Absensi::where('user_id', $user->id)
             ->whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
@@ -348,53 +504,41 @@ class RekapabsensiController extends Controller
             $suratSakit[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        // HITUNG
-        $jumlahHadir = 0;
-        $jumlahCutiTahunan = 0;
-        $jumlahCutiAlasanPenting = 0;
-        $jumlahSakit = 0;
-        $jumlahPending = 0;
+        // LEMBUR
+        $lemburData = Lembur::where('user_id', $user->id)
+            ->whereBetween('tanggal', [
+                $tanggalAwal->format('Y-m-d'),
+                $tanggalAkhir->format('Y-m-d'),
+            ])
+            ->where('status_approval', 'approved')
+            ->get();
 
-        foreach ($tanggal as $hari) {
-            $tanggalKey = $hari->format('Y-m-d');
-
-            $adaAbsensi    = isset($absensi[$tanggalKey]);
-            $adaHadirValid = isset($absensiHadir[$tanggalKey]);
-            $adaCuti       = isset($cuti[$tanggalKey]);
-            $adaSakit      = isset($suratSakit[$tanggalKey]);
-
-            $absensiPending = $adaAbsensi
-                && $absensi[$tanggalKey]->status_approval === 'pending';
-
-            if ($absensiPending) {
-                $jumlahPending++;
-            }
-
-            if ($hari->isWeekend()) {
-                if ($adaHadirValid) {
-                    $jumlahHadir++;
-                }
-                continue;
-            }
-
-            if ($adaHadirValid) {
-                if ($adaSakit) {
-                    $jumlahSakit++;
-                } else {
-                    $jumlahHadir++;
-                }
-            } elseif ($adaSakit) {
-                $jumlahSakit++;
-            } elseif ($adaCuti) {
-                $jenisCuti = strtolower(trim($cuti[$tanggalKey]->jenis_cuti ?? ''));
-                if (str_contains($jenisCuti, 'alasan') || str_contains($jenisCuti, 'penting')) {
-                    $jumlahCutiAlasanPenting++;
-                } else {
-                    $jumlahCutiTahunan++;
-                }
-            }
+        $lembur = [];
+        foreach ($lemburData as $item) {
+            $lembur[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
+        // =====================================================
+        // HITUNG STATISTIK — pakai helper yang sama
+        // =====================================================
+        $stat = $this->hitungStatistik(
+            $tanggal,
+            $absensi,
+            $cuti,
+            $lupaAbsen,
+            $suratSakit,
+            false  // perUser = false
+        );
+
+        $jumlahHadir             = $stat['hadir'];
+        $jumlahCutiTahunan       = $stat['cuti_tahunan'];
+        $jumlahCutiAlasanPenting = $stat['cuti_alasan'];
+        $jumlahSakit             = $stat['sakit'];
+        $jumlahLupa              = $stat['lupa'];
+        $jumlahPending           = $stat['pending'];
+        $jumlahLembur            = $lemburData->count();
+
+        // Total hari kerja
         $totalHariKerja = 0;
         foreach ($tanggal as $hari) {
             if (!$hari->isWeekend()) {
@@ -405,9 +549,9 @@ class RekapabsensiController extends Controller
         return view('rekap_saya.index', compact(
             'user', 'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
             'absensi', 'absensiHadir',
-            'cuti', 'lupaAbsen', 'suratSakit',
+            'cuti', 'lupaAbsen', 'suratSakit', 'lembur',
             'jumlahHadir', 'jumlahCutiTahunan', 'jumlahCutiAlasanPenting',
-            'jumlahSakit', 'jumlahPending',
+            'jumlahSakit', 'jumlahLupa', 'jumlahPending', 'jumlahLembur',
             'totalHariKerja'
         ));
     }
@@ -447,6 +591,7 @@ class RekapabsensiController extends Controller
             $hari->addDay();
         }
 
+        // ABSENSI
         $absensiData = Absensi::where('user_id', $user->id)
             ->whereBetween('tanggal', [
                 $tanggalAwal->format('Y-m-d'),
@@ -464,7 +609,7 @@ class RekapabsensiController extends Controller
 
         $cuti = [];
         foreach ($cutiData as $item) {
-            $mulai = Carbon::parse($item->tanggal_mulai);
+            $mulai   = Carbon::parse($item->tanggal_mulai);
             $selesai = Carbon::parse($item->tanggal_selesai);
             while ($mulai->lte($selesai)) {
                 if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
@@ -506,13 +651,48 @@ class RekapabsensiController extends Controller
             $suratSakit[Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
+        // =====================================================
+        // HITUNG STATISTIK — sama persis dengan rekapSaya
+        // =====================================================
+        $stat = $this->hitungStatistik(
+            $tanggal,
+            $absensi,
+            $cuti,
+            $lupaAbsen,
+            $suratSakit,
+            false
+        );
+
+        $jumlahHadir             = $stat['hadir'];
+        $jumlahCutiTahunan       = $stat['cuti_tahunan'];
+        $jumlahCutiAlasanPenting = $stat['cuti_alasan'];
+        $jumlahSakit             = $stat['sakit'];
+        $jumlahLupa              = $stat['lupa'];
+        $jumlahPending           = $stat['pending'];
+
+        // LEMBUR
+        $jumlahLembur = Lembur::where('user_id', $user->id)
+            ->whereBetween('tanggal', [
+                $tanggalAwal->format('Y-m-d'),
+                $tanggalAkhir->format('Y-m-d'),
+            ])
+            ->where('status_approval', 'approved')
+            ->count();
+
         $pdf = Pdf::loadView('rekap_saya.pdf', compact(
             'user', 'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
             'absensi', 'absensiHadir',
-            'cuti', 'lupaAbsen', 'suratSakit'
+            'cuti', 'lupaAbsen', 'suratSakit',
+            'jumlahHadir',
+            'jumlahCutiTahunan',
+            'jumlahCutiAlasanPenting',
+            'jumlahSakit',
+            'jumlahLupa',
+            'jumlahLembur',
+            'jumlahPending'
         ));
 
-        $pdf->setPaper('a4', 'landscape');
+        $pdf->setPaper('a4', 'portrait');
 
         return $pdf->download(
             'rekap-saya-' . $tahun . '-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '.pdf'

@@ -5,14 +5,14 @@
 <div class="space-y-6">
 
     {{-- =====================================================
-        HEADER
+                            HEADER
     ====================================================== --}}
 
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 
         <div>
             <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-                Selamat Datang, Admin Easy System
+                Selamat Datang, {{ auth()->user()->name }}
             </h1>
             <p class="mt-1 text-sm text-slate-500">
                 Berikut ringkasan aktivitas sistem hari ini.
@@ -26,9 +26,8 @@
 
     </div>
 
-
     {{-- =====================================================
-        CLOCK HERO
+                        CLOCK HERO
     ====================================================== --}}
 
     <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-700 to-purple-500 p-6 sm:p-8 text-white shadow-lg">
@@ -61,7 +60,6 @@
         </div>
 
     </div>
-
 
     {{-- =====================================================
         AKTIVITAS HARI INI (5 ANGKA)

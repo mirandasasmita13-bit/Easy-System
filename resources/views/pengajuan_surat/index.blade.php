@@ -102,7 +102,7 @@
             <div class="md:col-span-2">
                 <label class="block text-sm font-semibold text-slate-700 mb-2">
                     Dokumen Pendukung
-                    <span class="text-xs text-slate-400 font-normal">(opsional)</span>
+                    <span class="text-xs text-slate-400 font-normal"></span>
                 </label>
 
                 <input type="file" name="dokumen" id="dokumen"

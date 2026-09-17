@@ -19,6 +19,14 @@ use App\Http\Controllers\PengajuanController;
 use App\Http\Controllers\FileController;
 
 
+// ROOT — Redirect ke dashboard atau login
+Route::get('/', function () { 
+    if (auth()->check()) {
+        return redirect('/dashboard');
+    }
+    return redirect('/login');
+})->name('home');
+
 // ROUTE PUBLIK (Belum login)
 
     Route::get('/login',   [LoginController::class, 'index'])->name('login');
