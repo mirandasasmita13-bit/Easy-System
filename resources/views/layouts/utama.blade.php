@@ -9,11 +9,9 @@
           content="width=device-width, initial-scale=1.0">
 
     <title>
-        @yield('title', 'Easy System')
+        @yield('title', 'SIKAT')
     </title>
-
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-
 </head>
 
 
@@ -22,14 +20,12 @@
     $role = $user->role;
 @endphp
 
-
 <body class="bg-[#f7f7fb] text-gray-900 overflow-hidden">
-
 <div class="flex h-screen w-screen overflow-hidden">
 
 
     {{-- =========================================================
-        SIDEBAR DESKTOP
+                        SIDEBAR DESKTOP
     ========================================================== --}}
 
     <aside class="hidden lg:flex w-[280px] min-w-[280px] h-screen shrink-0 flex-col bg-[#21152f] text-white">
@@ -44,22 +40,19 @@
             <a href="{{ url('/dashboard') }}" class="flex items-center gap-3">
 
                 <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-500 text-xl font-bold">
-                    E
+                    S
                 </div>
 
                 <div class="min-w-0">
-                    <h1 class="text-lg font-bold text-white">Easy System</h1>
-                    <p class="text-xs text-purple-300">Office Management</p>
+                    <h1 class="text-lg font-bold text-white">SIKAT</h1>
+                    <p class="text-xs text-purple-300">Sistem Informasi Kehadiran Terintegrasi</p>
                 </div>
-
             </a>
 
         </div>
 
-
         {{-- GARIS --}}
         <div class="mx-6 border-t border-white/10"></div>
-
 
         {{-- =====================================================
             MENU DESKTOP
@@ -469,12 +462,12 @@
         <a href="{{ url('/dashboard') }}" class="flex items-center gap-3">
 
             <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500 font-bold">
-                E
+                S
             </div>
 
             <div>
-                <p class="text-sm font-bold">Easy System</p>
-                <p class="text-[10px] text-purple-300">Office Management</p>
+                <p class="text-sm font-bold">SIKAT</p>
+                <p class="text-[10px] text-purple-300">Sistem Informasi Kehadiran Terintegrasi</p>
             </div>
 
         </a>

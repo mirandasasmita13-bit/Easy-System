@@ -149,14 +149,6 @@
             <span class="ml-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-xs">{{ $countSurat }}</span>
         </a>
 
-        <a href="{{ url('/pengajuan?tab=cuti') }}"
-           class="px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition
-                  {{ $tab === 'cuti'
-                      ? 'border-purple-600 text-purple-600'
-                      : 'border-transparent text-slate-400 hover:text-purple-600' }}">
-            Manajemen Cuti
-        </a>
-
     </div>
 
 
@@ -446,50 +438,6 @@
         </div>
 
     @endif
-
-
-    {{-- =====================================================
-        TAB: CUTI
-    ====================================================== --}}
-    @if($tab === 'cuti')
-
-        @if($perluReset)
-            <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4">
-                <p class="font-semibold text-amber-800">
-                    ⚠️ Sebagian PPNPN memiliki tahun cuti lama
-                </p>
-                <p class="text-sm text-amber-700 mt-1">
-                    Reset tahun cuti akan dilakukan saat fitur Manajemen Cuti selesai.
-                </p>
-            </div>
-        @endif
-
-        <div class="mb-6">
-            <h4 class="font-bold text-base text-slate-900 mb-4">Daftar PPNPN</h4>
-
-            <div class="space-y-2">
-                @forelse($ppnpn as $p)
-                    <div class="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
-                        <div>
-                            <p class="font-semibold text-sm text-slate-900">{{ $p->name }}</p>
-                            <p class="text-xs text-slate-500">
-                                Jatah: {{ $p->jatah_cuti_tahunan ?? 12 }} hari ·
-                                Terpakai: {{ $p->totalCutiTerpakai() }} hari ·
-                                Sisa: {{ $p->sisaCutiTahunan() }} hari
-                            </p>
-                        </div>
-                        <p class="text-xs text-slate-400">Tahun: {{ $p->tahun_cuti ?? now()->year }}</p>
-                    </div>
-                @empty
-                    <div class="rounded-2xl bg-slate-50 border border-dashed border-slate-200 py-8 text-center">
-                        <p class="text-sm text-slate-500">Belum ada PPNPN aktif</p>
-                    </div>
-                @endforelse
-            </div>
-        </div>
-
-    @endif
-
 </div>
 
 @endsection

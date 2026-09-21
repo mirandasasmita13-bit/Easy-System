@@ -8,7 +8,7 @@
           content="width=device-width, initial-scale=1.0">
 
     <title>
-        @yield('title', 'Easy System')
+        @yield('title', 'SIKAT')
     </title>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])

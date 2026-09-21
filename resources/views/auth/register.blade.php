@@ -13,7 +13,7 @@
                 E
             </div>
             <h1 class="mt-5 text-2xl font-extrabold text-slate-900">Buat Akun</h1>
-            <p class="mt-1 text-slate-500">Daftar untuk mengakses Easy System.</p>
+            <p class="mt-1 text-slate-500">Daftar untuk mengakses SIKAT.</p>
         </div>
 
         <div class="bg-white border border-slate-200 rounded-2xl p-7 shadow-sm">

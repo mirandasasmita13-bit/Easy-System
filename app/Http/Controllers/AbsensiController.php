@@ -20,9 +20,18 @@ class AbsensiController extends Controller
     {
         $user = auth()->user();
 
+        // Absensi hari ini (apapun shift-nya)
         $absensiHariIni = Absensi::where('user_id', $user->id)
             ->whereDate('tanggal', today())
             ->latest()
+            ->first();
+
+        // Absensi yang BELUM pulang (untuk logic tombol di view)
+        $absensiBelumPulang = Absensi::where('user_id', $user->id)
+            ->whereNull('jam_pulang')
+            ->whereNotNull('jam_masuk')
+            ->latest('tanggal')
+            ->latest('jam_masuk')
             ->first();
 
         $riwayatAbsensi = Absensi::where('user_id', $user->id)
@@ -31,12 +40,13 @@ class AbsensiController extends Controller
             ->get();
 
         return view('absensi.index', [
-            'absensiHariIni'  => $absensiHariIni,
-            'riwayatAbsensi'  => $riwayatAbsensi,
-            'kantorLatitude'  => $this->kantorLatitude,
-            'kantorLongitude' => $this->kantorLongitude,
-            'radiusMaksimal'  => $this->radiusMaksimal,
-            'kantorAlamat'    => $this->kantorAlamat,
+            'absensiHariIni'     => $absensiHariIni,
+            'absensiBelumPulang' => $absensiBelumPulang,
+            'riwayatAbsensi'     => $riwayatAbsensi,
+            'kantorLatitude'     => $this->kantorLatitude,
+            'kantorLongitude'    => $this->kantorLongitude,
+            'radiusMaksimal'     => $this->radiusMaksimal,
+            'kantorAlamat'       => $this->kantorAlamat,
         ]);
     }
 
@@ -48,26 +58,50 @@ class AbsensiController extends Controller
         $user = auth()->user();
 
         $request->validate([
-            'shift' => 'required|in:pagi,malam',
-            'latitude' => ['required', 'numeric', 'between:-90,90'],
-            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'shift'      => 'required|in:pagi,malam',
+            'latitude'   => ['required', 'numeric', 'between:-90,90'],
+            'longitude'  => ['required', 'numeric', 'between:-180,180'],
             'foto_masuk' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
-        // Cek sudah absen untuk shift yang sama
+        // =====================================================
+        // 1. CEK: Ada absen yang BELUM pulang?
+        // =====================================================
+        $absenMenggantung = Absensi::where('user_id', $user->id)
+            ->whereNull('jam_pulang')
+            ->whereNotNull('jam_masuk')
+            ->latest('tanggal')
+            ->latest('jam_masuk')
+            ->first();
+
+        if ($absenMenggantung) {
+            return back()->with(
+                'error',
+                'Anda masih memiliki absen masuk yang belum pulang di tanggal ' .
+                $absenMenggantung->tanggal->format('d M Y') .
+                '. Silakan absen pulang terlebih dahulu.'
+            );
+        }
+
+        // =====================================================
+        // 2. CEK: Sudah absen shift yang SAMA di hari ini?
+        // =====================================================
         $sudahAbsenShift = Absensi::where('user_id', $user->id)
             ->whereDate('tanggal', today())
             ->where('shift', $request->shift)
             ->exists();
 
         if ($sudahAbsenShift) {
-            return back()->with('error',
+            return back()->with(
+                'error',
                 'Anda sudah melakukan absen masuk untuk shift ' .
                 ucfirst($request->shift) . ' hari ini.'
             );
         }
 
-        // Hitung jarak
+        // =====================================================
+        // 3. HITUNG JARAK
+        // =====================================================
         $jarak = $this->hitungJarak(
             $this->kantorLatitude,
             $this->kantorLongitude,
@@ -75,19 +109,23 @@ class AbsensiController extends Controller
             (float) $request->longitude
         );
 
-        // Cek radius
         if ($jarak > $this->radiusMaksimal) {
-            return back()->with('error',
+            return back()->with(
+                'error',
                 'Absen ditolak. Anda berada di luar radius kantor ' .
                 '(maksimal ' . $this->radiusMaksimal . ' meter). Jarak Anda sekitar ' .
                 round($jarak) . ' meter.'
             );
         }
 
-        // Simpan foto
+        // =====================================================
+        // 4. SIMPAN FOTO
+        // =====================================================
         $foto = $request->file('foto_masuk')->store('absensi', 'public');
 
-        // Simpan absensi
+        // =====================================================
+        // 5. SIMPAN ABSENSI
+        // =====================================================
         Absensi::create([
             'user_id'         => $user->id,
             'tanggal'         => today(),
@@ -101,7 +139,8 @@ class AbsensiController extends Controller
             'foto_masuk'      => $foto,
         ]);
 
-        return back()->with('success',
+        return back()->with(
+            'success',
             'Absen masuk berhasil. Jarak Anda dari kantor ' . round($jarak) . ' meter.'
         );
     }
@@ -114,32 +153,37 @@ class AbsensiController extends Controller
         $user = auth()->user();
 
         $request->validate([
-            'latitude' => ['required', 'numeric', 'between:-90,90'],
-            'longitude' => ['required', 'numeric', 'between:-180,180'],
+            'latitude'    => ['required', 'numeric', 'between:-90,90'],
+            'longitude'   => ['required', 'numeric', 'between:-180,180'],
             'foto_pulang' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
-        // Cari absensi yang belum pulang
+        // =====================================================
+        // 1. CARI ABSENSI TERAKHIR YANG BELUM PULANG
+        // =====================================================
+        // FIX BUG: Tidak peduli tanggal — yang penting belum pulang.
+        // Ini yang bikin shift malam berfungsi:
+        // - Masuk 19 Sep sore → belum pulang
+        // - Pulang 20 Sep pagi → update record 19 Sep
+        // =====================================================
         $absensi = Absensi::where('user_id', $user->id)
             ->whereNull('jam_pulang')
-            ->where(function ($query) {
-                $query->whereDate('tanggal', today())
-                    ->orWhere(function ($query) {
-                        $query->whereDate('tanggal', today()->subDay())
-                              ->where('shift', 'malam');
-                    });
-            })
+            ->whereNotNull('jam_masuk')
             ->latest('tanggal')
             ->latest('jam_masuk')
             ->first();
 
         if (!$absensi) {
-            return back()->with('error',
-                'Tidak ditemukan absensi yang dapat digunakan untuk absen pulang.'
+            return back()->with(
+                'error',
+                'Tidak ditemukan absensi yang dapat digunakan untuk absen pulang. ' .
+                'Silakan absen masuk terlebih dahulu.'
             );
         }
 
-        // Hitung jarak
+        // =====================================================
+        // 2. HITUNG JARAK
+        // =====================================================
         $jarak = $this->hitungJarak(
             $this->kantorLatitude,
             $this->kantorLongitude,
@@ -147,20 +191,28 @@ class AbsensiController extends Controller
             (float) $request->longitude
         );
 
-        // Cek radius
         if ($jarak > $this->radiusMaksimal) {
-            return back()->with('error',
+            return back()->with(
+                'error',
                 'Absen pulang ditolak. Anda berada di luar radius kantor ' .
                 '(maksimal ' . $this->radiusMaksimal . ' meter). Jarak Anda sekitar ' .
                 round($jarak) . ' meter.'
             );
         }
 
-        // Simpan foto
+        // =====================================================
+        // 3. SIMPAN FOTO
+        // =====================================================
         $foto = $request->file('foto_pulang')->store('absensi', 'public');
 
-        // Update absensi
+        // =====================================================
+        // 4. UPDATE ABSENSI
+        // =====================================================
+        // Tambah `tanggal_pulang` untuk catat tanggal pulang
+        // (kalau beda hari dengan tanggal masuk — misal shift malam)
+        // =====================================================
         $absensi->update([
+            'tanggal_pulang'    => now()->toDateString(),
             'jam_pulang'        => now()->format('H:i:s'),
             'latitude_pulang'   => $request->latitude,
             'longitude_pulang'  => $request->longitude,
@@ -168,7 +220,8 @@ class AbsensiController extends Controller
             'foto_pulang'       => $foto,
         ]);
 
-        return back()->with('success',
+        return back()->with(
+            'success',
             'Absen pulang berhasil. Jarak Anda dari kantor ' . round($jarak) . ' meter.'
         );
     }

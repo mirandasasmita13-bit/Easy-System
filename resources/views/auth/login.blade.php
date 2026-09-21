@@ -14,11 +14,11 @@
                         bg-purple-500
                         flex items-center justify-center
                         text-white text-2xl font-bold">
-                E
+                S
             </div>
 
             <h1 class="mt-5 text-2xl font-extrabold text-slate-900">
-                Easy System
+                SIKAT
             </h1>
 
             <p class="mt-1 text-slate-500">
@@ -142,7 +142,7 @@
 
 
         <p class="text-center text-xs text-slate-400 mt-6">
-            Easy System · Office Management
+            SIKAT · Sistem Informasi Kehadiran Terintegritas
         </p>
 
     </div>

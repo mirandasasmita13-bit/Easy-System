@@ -84,6 +84,10 @@
             <span class="w-7 h-7 rounded-lg bg-red-100 text-red-800 ring-1 ring-red-200 flex items-center justify-center text-[8px] font-extrabold">LIB</span>
             <span class="text-xs text-slate-500">Hari Libur</span>
         </div>
+        <div class="flex items-center gap-2">
+            <span class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 ring-1 ring-amber-200 flex items-center justify-center text-[11px] font-extrabold">⏳</span>
+            <span class="text-xs text-slate-500">Belum Absen Pulang</span>
+        </div>
     </div>
 </div>
 
@@ -92,6 +96,9 @@
 
     <div class="px-5 sm:px-6 py-5 border-b border-slate-100">
         <h3 class="text-lg font-bold text-slate-900">Rekap Kehadiran PPNPN</h3>
+        <p class="text-sm text-slate-400 mt-1">
+            Jam masuk & jam pulang shift malam ditampilkan di tanggal masuk.
+        </p>
     </div> 
 
     <div class="overflow-x-auto">
@@ -168,7 +175,10 @@
 
                                 $kode = '-';
                                 $warna = 'bg-slate-50 text-slate-300 ring-1 ring-slate-100';
-                                $jamMasukText = null; $jamPulangText = null; $isPending = false;
+                                $jamMasukText = null;
+                                $jamPulangText = null;
+                                $belumPulang = false;
+                                $isPending = false;
                             @endphp
 
                             @if($isWeekend)
@@ -179,6 +189,7 @@
                                         $jumlahHadir++;
                                         $jamMasukText = \Carbon\Carbon::parse($absensiHariIni->jam_masuk)->format('H:i');
                                         $jamPulangText = $absensiHariIni->jam_pulang ? \Carbon\Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') : null;
+                                        $belumPulang = !$absensiHariIni->jam_pulang;
                                     @endphp
                                 @elseif($absensiPending)
                                     @php
@@ -205,6 +216,7 @@
                                         $jumlahHadir++;
                                         $jamMasukText = \Carbon\Carbon::parse($absensiHariIni->jam_masuk)->format('H:i');
                                         $jamPulangText = $absensiHariIni->jam_pulang ? \Carbon\Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') : null;
+                                        $belumPulang = !$absensiHariIni->jam_pulang;
                                     @endphp
                                 @elseif($lupaApproved)
                                     @php $kode = 'H'; $warna = 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200'; $jumlahHadir++; @endphp
@@ -222,7 +234,8 @@
                             <td class="px-1 py-2 text-center align-top border-r border-slate-100 min-w-[72px]
                                 {{ $kode === 'LIB' ? 'bg-red-50/40' : '' }}
                                 {{ $isPending ? 'bg-orange-50/40' : '' }}
-                                {{ $kode === 'S' ? 'bg-rose-50/40' : '' }}">
+                                {{ $kode === 'S' ? 'bg-rose-50/40' : '' }}
+                                {{ $belumPulang ? 'bg-amber-50/40' : '' }}">
 
                                 {{-- KODE --}}
                                 <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[10px] font-extrabold {{ $warna }}"
@@ -241,6 +254,12 @@
                                 @if($jamPulangText)
                                     <div class="text-[9px] leading-tight whitespace-nowrap text-slate-500">
                                         ↑ {{ $jamPulangText }}
+                                    </div>
+                                @elseif($belumPulang)
+                                    {{-- BELUM PULANG --}}
+                                    <div class="text-[9px] leading-tight whitespace-nowrap text-amber-600 font-semibold"
+                                         title="Belum absen pulang">
+                                        ↑ ⏳
                                     </div>
                                 @endif
 

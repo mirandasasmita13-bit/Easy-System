@@ -53,7 +53,12 @@
                 <div class="lg:text-right">
                     <p class="text-purple-100 text-xs sm:text-sm mb-2">Status kehadiran</p>
                     <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10 text-white text-sm font-semibold">
-                        @if(!$absensiHariIni)
+                       
+                    {{-- LOGIC BARU: cek absensiBelumPulang dulu --}}
+                        @if($absensiBelumPulang)
+                            <span class="w-2 h-2 rounded-full bg-purple-300"></span>
+                            Sedang Shift — Belum Pulang
+                        @elseif(!$absensiHariIni)
                             <span class="w-2 h-2 rounded-full bg-amber-300"></span>
                             Belum Absen
                         @elseif(!$absensiHariIni->jam_pulang)
@@ -68,6 +73,25 @@
             </div>
         </div>
     </div>
+
+
+    {{-- INFO ABSEN MENGGANTUNG (kalau ada) --}}
+    @if($absensiBelumPulang)
+        <div class="mb-5 rounded-xl bg-violet-50 border border-violet-200 px-5 py-4 flex items-start gap-3">
+            <div class="text-2xl shrink-0">🌙</div>
+            <div class="min-w-0">
+                <p class="font-bold text-violet-900">Anda sedang dalam shift yang belum pulang</p>
+                <p class="text-sm text-violet-700 mt-1">
+                    Masuk <strong>{{ $absensiBelumPulang->shift === 'malam' ? 'Shift Malam' : 'Shift Pagi' }}</strong>
+                    pada <strong>{{ $absensiBelumPulang->tanggal->translatedFormat('d F Y') }}</strong>
+                    jam <strong>{{ \Carbon\Carbon::parse($absensiBelumPulang->jam_masuk)->format('H:i') }}</strong>.
+                </p>
+                <p class="text-xs text-violet-600 mt-1.5">
+                    Silakan lakukan <strong>Absen Pulang</strong> terlebih dahulu sebelum absen masuk lagi.
+                </p>
+            </div>
+        </div>
+    @endif
 
 
     {{-- AREA ABSEN --}}
@@ -89,7 +113,22 @@
                 </div>
             </div>
 
-            @if(!$absensiHariIni)
+            {{-- LOGIC BARU: kalau ada absensiBelumPulang, sembunyikan form --}}
+            @if($absensiBelumPulang)
+                {{-- Ada absen menggantung --}}
+                <div class="mt-6 rounded-xl bg-amber-50 border border-amber-200 p-5 text-center">
+                    <p class="text-sm font-semibold text-amber-800">
+                        ⚠️ Selesaikan shift sebelumnya dulu
+                    </p>
+                    <p class="text-xs text-amber-700 mt-1">
+                        Anda belum absen pulang dari shift
+                        {{ $absensiBelumPulang->shift === 'malam' ? 'malam' : 'pagi' }}
+                        tanggal {{ $absensiBelumPulang->tanggal->translatedFormat('d M Y') }}.
+                    </p>
+                </div>
+
+            @elseif(!$absensiHariIni)
+                {{-- Belum absen sama sekali hari ini --}}
                 <form id="formAbsenMasuk" action="{{ url('/absensi/masuk') }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
@@ -156,6 +195,7 @@
                     </button>
                 </form>
             @else
+                {{-- Sudah absen masuk hari ini --}}
                 <button type="button" disabled
                         class="w-full mt-6 bg-slate-100 text-slate-400 py-3.5 rounded-xl font-semibold cursor-not-allowed">
                     ✓ &nbsp; Sudah Absen Masuk
@@ -180,11 +220,23 @@
                 </div>
             </div>
 
-            @if($absensiHariIni && !$absensiHariIni->jam_pulang)
+            {{-- LOGIC BARU: pakai absensiBelumPulang --}}
+            @if($absensiBelumPulang)
+                {{-- Ada absen menggantung → tampilkan tombol pulang --}}
+                <div class="mt-4 rounded-xl bg-violet-50 border border-violet-100 p-3">
+                    <p class="text-xs font-semibold text-violet-700">
+                        Shift: {{ $absensiBelumPulang->shift === 'malam' ? 'Malam' : 'Pagi' }}
+                    </p>
+                    <p class="text-xs text-violet-600 mt-0.5">
+                        Masuk: {{ $absensiBelumPulang->tanggal->translatedFormat('d M Y') }}
+                        jam {{ \Carbon\Carbon::parse($absensiBelumPulang->jam_masuk)->format('H:i') }}
+                    </p>
+                </div>
+
                 <form id="formAbsenPulang" action="{{ url('/absensi/pulang') }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
-                    <div class="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-4">
+                    <div class="mt-4 rounded-xl bg-slate-50 border border-slate-100 p-4">
                         <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">Lokasi Kantor</p>
                         <p class="text-sm text-slate-600 leading-relaxed mt-2">{{ $kantorAlamat }}</p>
 
@@ -237,6 +289,7 @@
                     </button>
                 </form>
             @elseif(!$absensiHariIni)
+                {{-- Belum absen sama sekali --}}
                 <div class="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-5 text-center">
                     <p class="text-sm text-slate-400">Silakan lakukan absen masuk terlebih dahulu.</p>
                 </div>
@@ -245,6 +298,7 @@
                     Absen Pulang
                 </button>
             @else
+                {{-- Sudah lengkap (masuk + pulang) --}}
                 <button type="button" disabled
                         class="w-full mt-6 bg-emerald-50 text-emerald-600 py-3.5 rounded-xl font-semibold cursor-not-allowed">
                     ✓ &nbsp; Sudah Absen Pulang
@@ -255,42 +309,60 @@
 
 
     {{-- INFORMASI HARI INI --}}
+    @php
+        // Tentukan absensi yang mau ditampilkan di info:
+        // - Kalau ada absensiBelumPulang → tampilkan itu (shift aktif)
+        // - Kalau tidak → tampilkan absensiHariIni
+        $absensiTampil = $absensiBelumPulang ?? $absensiHariIni;
+    @endphp
+
     <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm mb-7">
         <div class="mb-5">
             <h3 class="font-bold text-lg text-slate-900">Informasi Kehadiran</h3>
-            <p class="text-sm text-slate-400 mt-1">Ringkasan absensi kamu hari ini.</p>
+            <p class="text-sm text-slate-400 mt-1">
+                @if($absensiBelumPulang && $absensiBelumPulang->tanggal->isToday() === false)
+                    Ringkasan shift yang sedang berjalan.
+                @else
+                    Ringkasan absensi kamu hari ini.
+                @endif
+            </p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
                 <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Jam Masuk</p>
                 <p class="text-2xl font-bold text-slate-900 mt-2">
-                    {{ $absensiHariIni?->jam_masuk ? \Carbon\Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : '--:--' }}
+                    {{ $absensiTampil?->jam_masuk ? \Carbon\Carbon::parse($absensiTampil->jam_masuk)->format('H:i') : '--:--' }}
                 </p>
-                @if($absensiHariIni && $absensiHariIni->jarak !== null)
-                    <p class="text-xs text-slate-500 mt-2">📍 {{ number_format($absensiHariIni->jarak, 0) }} m dari kantor</p>
+                @if($absensiTampil && $absensiTampil->jarak !== null)
+                    <p class="text-xs text-slate-500 mt-2">📍 {{ number_format($absensiTampil->jarak, 0) }} m dari kantor</p>
                 @endif
             </div>
 
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
                 <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Jam Pulang</p>
                 <p class="text-2xl font-bold text-slate-900 mt-2">
-                    {{ $absensiHariIni?->jam_pulang ? \Carbon\Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') : '--:--' }}
+                    {{ $absensiTampil?->jam_pulang ? \Carbon\Carbon::parse($absensiTampil->jam_pulang)->format('H:i') : '--:--' }}
                 </p>
-                @if($absensiHariIni && $absensiHariIni->jarak_pulang !== null)
-                    <p class="text-xs text-slate-500 mt-2">📍 {{ number_format($absensiHariIni->jarak_pulang, 0) }} m dari kantor</p>
+                @if($absensiTampil && $absensiTampil->jarak_pulang !== null)
+                    <p class="text-xs text-slate-500 mt-2">📍 {{ number_format($absensiTampil->jarak_pulang, 0) }} m dari kantor</p>
                 @endif
             </div>
 
             <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
                 <p class="text-xs uppercase tracking-wider text-slate-400 font-semibold">Shift</p>
                 <p class="text-lg font-bold text-purple-600 mt-3">
-                    @if($absensiHariIni)
-                        @if($absensiHariIni->shift === 'malam') Shift Malam
-                        @elseif($absensiHariIni->shift === 'pagi') Shift Pagi
+                    @if($absensiTampil)
+                        @if($absensiTampil->shift === 'malam') Shift Malam
+                        @elseif($absensiTampil->shift === 'pagi') Shift Pagi
                         @else Belum dipilih @endif
                     @else Belum dipilih @endif
                 </p>
+                @if($absensiBelumPulang && $absensiBelumPulang->tanggal->isToday() === false)
+                    <p class="text-[10px] text-violet-600 mt-1">
+                        {{ $absensiBelumPulang->tanggal->translatedFormat('d M Y') }}
+                    </p>
+                @endif
             </div>
         </div>
     </div>
@@ -325,18 +397,16 @@
                 </button>
             </div>
 
-            {{-- VIDEO + OVERLAY WATERMARK LIVE --}}
             <div class="relative bg-black shrink-0">
                 <video id="videoKamera" autoplay playsinline muted
                        class="w-full aspect-[3/4] max-h-[55vh] object-cover"></video>
                 <canvas id="canvasKamera" class="hidden"></canvas>
 
-                {{-- PREVIEW WATERMARK LIVE (mengikuti layout canvas) --}}
                 <div class="pointer-events-none absolute inset-x-0 bottom-0 pt-16 px-4 pb-3"
                      style="background: linear-gradient(to top, rgba(10,10,20,0.92) 0%, rgba(10,10,20,0.55) 45%, rgba(10,10,20,0) 100%);">
 
                     <p class="text-[11px] font-bold tracking-wide text-purple-300 leading-tight">
-                        EASY SYSTEM <span class="text-purple-400/70">|</span> <span id="wmJenisLabel">ABSEN MASUK</span>
+                        SIKAT <span class="text-purple-400/70">|</span> <span id="wmJenisLabel">ABSEN MASUK</span>
                     </p>
 
                     <p id="wmTanggalJam" class="mt-1 text-sm font-bold text-white leading-tight">
@@ -394,7 +464,7 @@
     </div>
 
 
-    {{-- JAVASCRIPT --}}
+    {{-- JAVASCRIPT (TIDAK BERUBAH) --}}
     <script>
 
         const OFFICE_LOKASI = {
@@ -406,7 +476,6 @@
 
         document.addEventListener('DOMContentLoaded', function () {
 
-            /* FORMAT JAM & TANGGAL */
             function formatJamTanggal(denganDetik) {
                 const now = new Date();
                 const options = { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' };
@@ -427,14 +496,11 @@
                 if (jamElement) jamElement.textContent = jamHero;
                 if (tanggalElement) tanggalElement.textContent = tanggal;
 
-                // Update watermark preview kamera (kalau modal terbuka)
                 if (modalKamera && !modalKamera.classList.contains('hidden')) {
                     updatePreviewWatermark();
                 }
             }
 
-
-            /* HITUNG JARAK */
             function hitungJarakMeter(lat1, lon1, lat2, lon2) {
                 const R = 6371000;
                 const toRad = (deg) => (deg * Math.PI) / 180;
@@ -446,15 +512,11 @@
                 return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             }
 
-
-            /* STATE LOKASI */
             const lokasiState = {
                 masuk:  { lat: null, lng: null, jarak: null },
                 pulang: { lat: null, lng: null, jarak: null }
             };
 
-
-            /* VARIABEL KAMERA */
             const modalKamera    = document.getElementById('modalKamera');
             const videoKamera    = document.getElementById('videoKamera');
             const canvasKamera   = document.getElementById('canvasKamera');
@@ -465,8 +527,6 @@
             let targetFoto = null;
             let jenisAktif = null;
 
-
-            /* UPDATE PREVIEW WATERMARK (LIVE) */
             function updatePreviewWatermark() {
                 if (!jenisAktif) return;
 
@@ -482,15 +542,12 @@
                 if (wmJenisLabel) {
                     wmJenisLabel.textContent = jenisAktif === 'pulang' ? 'ABSEN PULANG' : 'ABSEN MASUK';
                 }
-
                 if (wmTanggalJam) {
                     wmTanggalJam.textContent = tanggal + ' | ' + jam;
                 }
-
                 if (wmAlamat) {
                     wmAlamat.textContent = OFFICE_LOKASI.alamat;
                 }
-
                 if (wmJarak) {
                     if (data.jarak !== null && data.jarak !== undefined) {
                         const dalam = data.jarak <= OFFICE_LOKASI.radius;
@@ -502,7 +559,6 @@
                         wmJarak.style.color = '#e5e7eb';
                     }
                 }
-
                 if (wmGps) {
                     if (data.lat !== null && data.lng !== null) {
                         wmGps.textContent = 'GPS: ' + Number(data.lat).toFixed(6) + ', ' + Number(data.lng).toFixed(6);
@@ -512,19 +568,15 @@
                 }
             }
 
-
-            /* BUKA / TUTUP KAMERA */
             async function bukaKamera(target, jenis) {
                 targetFoto = target;
                 jenisAktif = jenis;
-
                 updatePreviewWatermark();
 
                 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                     alert('Kamera tidak didukung oleh browser ini.');
                     return;
                 }
-
                 try {
                     streamKamera = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } },
@@ -552,8 +604,6 @@
 
             if (btnTutupKamera) btnTutupKamera.addEventListener('click', tutupKamera);
 
-
-            /* MODAL LIHAT FOTO */
             window.bukaModalFoto = function(imageId) {
                 const imgElement = document.getElementById(imageId);
                 if (!imgElement || !imgElement.src) return;
@@ -581,11 +631,6 @@
                 if (e.key === 'Escape') window.tutupModalFoto();
             });
 
-
-            /* =====================================================
-               GAMBAR WATERMARK DI ATAS FOTO (FINAL)
-               Format seperti contoh "SMART PPNPN"
-            ===================================================== */
             function gambarWatermark(context, width, height, jenis) {
                 const data = lokasiState[jenis] || {};
                 const { jam, tanggal } = formatJamTanggal(false);
@@ -602,18 +647,15 @@
 
                 const label = jenis === 'pulang' ? 'ABSEN PULANG' : 'ABSEN MASUK';
 
-                // Ukuran area watermark (bawah)
                 const barHeight = Math.max(180, Math.round(height * 0.35));
                 const paddingX  = Math.round(width * 0.05);
 
-                // Ukuran font
                 const fontHeader = Math.max(13, Math.round(width * 0.032));
                 const fontMain   = Math.max(17, Math.round(width * 0.042));
                 const fontSub    = Math.max(12, Math.round(width * 0.028));
                 const fontSmall  = Math.max(11, Math.round(width * 0.026));
                 const lineGap    = Math.max(20, Math.round(width * 0.042));
 
-                // Gradient gelap
                 const gradient = context.createLinearGradient(0, height - barHeight, 0, height);
                 gradient.addColorStop(0,    'rgba(10, 10, 20, 0)');
                 gradient.addColorStop(0.30, 'rgba(10, 10, 20, 0.60)');
@@ -634,16 +676,13 @@
                     return out + '...';
                 }
 
-                // ---- Mulai render ----
                 let y = height - barHeight + lineGap * 1.0;
                 context.textBaseline = 'alphabetic';
 
-                // 1) HEADER: EASY SYSTEM | ABSEN MASUK
                 context.fillStyle = '#c4b5fd';
                 context.font = '700 ' + fontHeader + 'px Arial, sans-serif';
-                context.fillText('EASY SYSTEM  |  ' + label, paddingX, y);
+                context.fillText('SIKAT  |  ' + label, paddingX, y);
 
-                // 2) TANGGAL | JAM
                 y += lineGap;
                 context.fillStyle = '#ffffff';
                 context.font = '700 ' + fontMain + 'px Arial, sans-serif';
@@ -652,7 +691,6 @@
                     paddingX, y
                 );
 
-                // 3) ALAMAT KANTOR
                 y += lineGap * 0.95;
                 context.fillStyle = '#f1f5f9';
                 context.font = '500 ' + fontSmall + 'px Arial, sans-serif';
@@ -661,7 +699,6 @@
                     paddingX, y
                 );
 
-                // 4) JARAK (warna dinamis)
                 y += lineGap * 0.9;
                 context.fillStyle = dalamRadius ? '#86efac' : '#fca5a5';
                 context.font = '700 ' + fontSub + 'px Arial, sans-serif';
@@ -670,7 +707,6 @@
                     paddingX, y
                 );
 
-                // 5) GPS
                 y += lineGap * 0.85;
                 context.fillStyle = '#cbd5e1';
                 context.font = '500 ' + fontSmall + 'px Arial, sans-serif';
@@ -680,8 +716,6 @@
                 );
             }
 
-
-            /* AMBIL FOTO DARI KAMERA */
             if (btnAmbilKamera) {
                 btnAmbilKamera.addEventListener('click', function () {
                     if (!targetFoto) return;
@@ -736,8 +770,7 @@
                             document.getElementById(preview).classList.remove('hidden');
                         }
                         if (ulang) document.getElementById(ulang).classList.remove('hidden');
-                        if (keterangan) document.getElementById(keterangan).textContent =
-                            'Foto berhasil diambil.';
+                        if (keterangan) document.getElementById(keterangan).textContent = 'Foto berhasil diambil.';
 
                         tutupKamera();
 
@@ -747,8 +780,6 @@
                 });
             }
 
-
-            /* SETUP FOTO MASUK & PULANG */
             const fotoMasuk         = document.getElementById('foto_masuk');
             const btnFotoMasuk      = document.getElementById('btnFotoMasuk');
             const btnFotoUlangMasuk = document.getElementById('btnFotoUlangMasuk');
@@ -774,8 +805,6 @@
             if (btnFotoPulang) btnFotoPulang.addEventListener('click', () => bukaKamera(fotoPulang, 'pulang'));
             if (btnFotoUlangPulang) btnFotoUlangPulang.addEventListener('click', () => bukaKamera(fotoPulang, 'pulang'));
 
-
-            /* AMBIL LOKASI */
             function ambilLokasi(latitudeInput, longitudeInput, statusElement, button, jenis, btnFoto) {
                 return new Promise(function (resolve, reject) {
                     if (!navigator.geolocation) { alert('Browser kamu tidak mendukung GPS.'); reject(); return; }
@@ -809,7 +838,6 @@
                             button.innerHTML = '↻ Ambil Ulang Lokasi';
                             if (btnFoto) btnFoto.disabled = false;
 
-                            // Update preview watermark kalau modal terbuka
                             if (jenisAktif === jenis) updatePreviewWatermark();
 
                             resolve(jarak);
@@ -848,8 +876,6 @@
                 });
             }
 
-
-            /* CEK FORM */
             function cekFormMasuk() {
                 const shift     = document.getElementById('shift')?.value;
                 const latitude  = document.getElementById('latitudeMasuk')?.value;
@@ -872,8 +898,6 @@
             if (fotoMasuk)  fotoMasuk.addEventListener('change', cekFormMasuk);
             if (fotoPulang) fotoPulang.addEventListener('change', cekFormPulang);
 
-
-            /* SUBMIT MASUK */
             const formMasuk = document.getElementById('formAbsenMasuk');
             if (formMasuk) {
                 formMasuk.addEventListener('submit', function (event) {
@@ -890,8 +914,6 @@
                 });
             }
 
-
-            /* SUBMIT PULANG */
             const formPulang = document.getElementById('formAbsenPulang');
             if (formPulang) {
                 formPulang.addEventListener('submit', function (event) {
@@ -907,7 +929,6 @@
                     button.innerHTML = '⏳ Menyimpan absensi...';
                 });
             }
-
 
             updateClock();
             setInterval(updateClock, 1000);
