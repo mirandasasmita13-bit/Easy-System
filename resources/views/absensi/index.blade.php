@@ -53,9 +53,7 @@
                 <div class="lg:text-right">
                     <p class="text-purple-100 text-xs sm:text-sm mb-2">Status kehadiran</p>
                     <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/10 text-white text-sm font-semibold">
-                       
-                    {{-- LOGIC BARU: cek absensiBelumPulang dulu --}}
-                        @if($absensiBelumPulang)
+                        @if($absensiBisaPulang)
                             <span class="w-2 h-2 rounded-full bg-purple-300"></span>
                             Sedang Shift — Belum Pulang
                         @elseif(!$absensiHariIni)
@@ -75,19 +73,19 @@
     </div>
 
 
-    {{-- INFO ABSEN MENGGANTUNG (kalau ada) --}}
-    @if($absensiBelumPulang)
+    {{-- INFO: Absen menggantung yang bisa dipulangkan --}}
+    @if($absensiBisaPulang)
         <div class="mb-5 rounded-xl bg-violet-50 border border-violet-200 px-5 py-4 flex items-start gap-3">
             <div class="text-2xl shrink-0">🌙</div>
             <div class="min-w-0">
-                <p class="font-bold text-violet-900">Anda sedang dalam shift yang belum pulang</p>
+                <p class="font-bold text-violet-900">Kamu sedang dalam shift yang belum pulang</p>
                 <p class="text-sm text-violet-700 mt-1">
-                    Masuk <strong>{{ $absensiBelumPulang->shift === 'malam' ? 'Shift Malam' : 'Shift Pagi' }}</strong>
-                    pada <strong>{{ $absensiBelumPulang->tanggal->translatedFormat('d F Y') }}</strong>
-                    jam <strong>{{ \Carbon\Carbon::parse($absensiBelumPulang->jam_masuk)->format('H:i') }}</strong>.
+                    Masuk <strong>{{ $absensiBisaPulang->shift === 'malam' ? 'Shift Malam' : 'Shift Pagi' }}</strong>
+                    pada <strong>{{ $absensiBisaPulang->tanggal->translatedFormat('d F Y') }}</strong>
+                    jam <strong>{{ \Carbon\Carbon::parse($absensiBisaPulang->jam_masuk)->format('H:i') }}</strong>.
                 </p>
                 <p class="text-xs text-violet-600 mt-1.5">
-                    Silakan lakukan <strong>Absen Pulang</strong> terlebih dahulu sebelum absen masuk lagi.
+                    Silakan lakukan <strong>Absen Pulang</strong> di panel kanan.
                 </p>
             </div>
         </div>
@@ -113,22 +111,26 @@
                 </div>
             </div>
 
-            {{-- LOGIC BARU: kalau ada absensiBelumPulang, sembunyikan form --}}
-            @if($absensiBelumPulang)
-                {{-- Ada absen menggantung --}}
-                <div class="mt-6 rounded-xl bg-amber-50 border border-amber-200 p-5 text-center">
-                    <p class="text-sm font-semibold text-amber-800">
-                        ⚠️ Selesaikan shift sebelumnya dulu
+            {{-- LOGIC BARU: form masuk SELALU tampil, kecuali sudah absen hari ini --}}
+            @if($absensiHariIni && !$absensiHariIni->jam_pulang)
+                {{-- Sudah absen masuk, belum pulang → sembunyikan form --}}
+                <div class="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-5 text-center">
+                    <p class="text-sm text-slate-500">
+                        Kamu sudah absen masuk
+                        <strong>{{ $absensiHariIni->shift === 'malam' ? 'Shift Malam' : 'Shift Pagi' }}</strong>
+                        jam
+                        <strong>{{ \Carbon\Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') }}</strong>.
                     </p>
-                    <p class="text-xs text-amber-700 mt-1">
-                        Anda belum absen pulang dari shift
-                        {{ $absensiBelumPulang->shift === 'malam' ? 'malam' : 'pagi' }}
-                        tanggal {{ $absensiBelumPulang->tanggal->translatedFormat('d M Y') }}.
+                    <p class="text-xs text-slate-400 mt-2">
+                        Absen pulang dulu sebelum absen masuk lagi.
                     </p>
                 </div>
-
-            @elseif(!$absensiHariIni)
-                {{-- Belum absen sama sekali hari ini --}}
+                <button type="button" disabled
+                        class="w-full mt-6 bg-slate-100 text-slate-400 py-3.5 rounded-xl font-semibold cursor-not-allowed">
+                    ✓ &nbsp; Sudah Absen Masuk
+                </button>
+            @else
+                {{-- Belum absen hari ini, ATAU sudah absen lengkap → tampilkan form --}}
                 <form id="formAbsenMasuk" action="{{ url('/absensi/masuk') }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
@@ -194,12 +196,6 @@
                         ✓ &nbsp; Absen Masuk
                     </button>
                 </form>
-            @else
-                {{-- Sudah absen masuk hari ini --}}
-                <button type="button" disabled
-                        class="w-full mt-6 bg-slate-100 text-slate-400 py-3.5 rounded-xl font-semibold cursor-not-allowed">
-                    ✓ &nbsp; Sudah Absen Masuk
-                </button>
             @endif
         </div>
 
@@ -220,16 +216,15 @@
                 </div>
             </div>
 
-            {{-- LOGIC BARU: pakai absensiBelumPulang --}}
-            @if($absensiBelumPulang)
-                {{-- Ada absen menggantung → tampilkan tombol pulang --}}
+            @if($absensiBisaPulang)
+                {{-- Ada record yang bisa dipulangkan → tampilkan form --}}
                 <div class="mt-4 rounded-xl bg-violet-50 border border-violet-100 p-3">
                     <p class="text-xs font-semibold text-violet-700">
-                        Shift: {{ $absensiBelumPulang->shift === 'malam' ? 'Malam' : 'Pagi' }}
+                        Shift: {{ $absensiBisaPulang->shift === 'malam' ? 'Malam' : 'Pagi' }}
                     </p>
                     <p class="text-xs text-violet-600 mt-0.5">
-                        Masuk: {{ $absensiBelumPulang->tanggal->translatedFormat('d M Y') }}
-                        jam {{ \Carbon\Carbon::parse($absensiBelumPulang->jam_masuk)->format('H:i') }}
+                        Masuk: {{ $absensiBisaPulang->tanggal->translatedFormat('d M Y') }}
+                        jam {{ \Carbon\Carbon::parse($absensiBisaPulang->jam_masuk)->format('H:i') }}
                     </p>
                 </div>
 
@@ -288,20 +283,20 @@
                         Absen Pulang
                     </button>
                 </form>
-            @elseif(!$absensiHariIni)
-                {{-- Belum absen sama sekali --}}
+            @else
+                {{-- Tidak ada yang bisa dipulangkan --}}
                 <div class="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-5 text-center">
-                    <p class="text-sm text-slate-400">Silakan lakukan absen masuk terlebih dahulu.</p>
+                    <p class="text-sm text-slate-400">
+                        @if(!$absensiHariIni)
+                            Silakan lakukan absen masuk terlebih dahulu.
+                        @else
+                            Tidak ada absen masuk yang bisa dipulangkan saat ini.
+                        @endif
+                    </p>
                 </div>
                 <button type="button" disabled
-                        class="w-full mt-4 bg-slate-100 text-slate-400 py-3.5 rounded-xl font-semibold cursor-not-allowed">
+                        class="w-full mt-6 bg-slate-100 text-slate-400 py-3.5 rounded-xl font-semibold cursor-not-allowed">
                     Absen Pulang
-                </button>
-            @else
-                {{-- Sudah lengkap (masuk + pulang) --}}
-                <button type="button" disabled
-                        class="w-full mt-6 bg-emerald-50 text-emerald-600 py-3.5 rounded-xl font-semibold cursor-not-allowed">
-                    ✓ &nbsp; Sudah Absen Pulang
                 </button>
             @endif
         </div>
@@ -310,17 +305,14 @@
 
     {{-- INFORMASI HARI INI --}}
     @php
-        // Tentukan absensi yang mau ditampilkan di info:
-        // - Kalau ada absensiBelumPulang → tampilkan itu (shift aktif)
-        // - Kalau tidak → tampilkan absensiHariIni
-        $absensiTampil = $absensiBelumPulang ?? $absensiHariIni;
+        $absensiTampil = $absensiBisaPulang ?? $absensiHariIni;
     @endphp
 
     <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-100 shadow-sm mb-7">
         <div class="mb-5">
             <h3 class="font-bold text-lg text-slate-900">Informasi Kehadiran</h3>
             <p class="text-sm text-slate-400 mt-1">
-                @if($absensiBelumPulang && $absensiBelumPulang->tanggal->isToday() === false)
+                @if($absensiBisaPulang && $absensiBisaPulang->tanggal->isToday() === false)
                     Ringkasan shift yang sedang berjalan.
                 @else
                     Ringkasan absensi kamu hari ini.
@@ -358,9 +350,9 @@
                         @else Belum dipilih @endif
                     @else Belum dipilih @endif
                 </p>
-                @if($absensiBelumPulang && $absensiBelumPulang->tanggal->isToday() === false)
+                @if($absensiBisaPulang && $absensiBisaPulang->tanggal->isToday() === false)
                     <p class="text-[10px] text-violet-600 mt-1">
-                        {{ $absensiBelumPulang->tanggal->translatedFormat('d M Y') }}
+                        {{ $absensiBisaPulang->tanggal->translatedFormat('d M Y') }}
                     </p>
                 @endif
             </div>
