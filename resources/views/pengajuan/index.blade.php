@@ -9,9 +9,7 @@
 ===================================================== --}}
 
 <div class="mb-6">
-
     <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-
         <div>
             <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
                 Pengajuan
@@ -27,9 +25,7 @@
                 {{ $jumlahPending }} pengajuan menunggu
             </div>
         @endif
-
     </div>
-
 </div>
 
 
@@ -43,6 +39,12 @@
 @if(session('error'))
     <div class="mb-5 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
         {{ session('error') }}
+    </div>
+@endif
+
+@if(session('warning'))
+    <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-700">
+        {{ session('warning') }}
     </div>
 @endif
 
@@ -119,7 +121,7 @@
         </div>
     </div>
 
-    {{-- TAB NAVIGATION (URL-based) --}}
+    {{-- TAB NAVIGATION --}}
     <div class="flex items-center gap-2 border-b border-slate-100 mb-5 overflow-x-auto">
 
         <a href="{{ url('/pengajuan?tab=lembur') }}"
@@ -225,31 +227,52 @@
         </div>
 
 
-        {{-- RIWAYAT --}}
+        {{-- RIWAYAT LEMBUR --}}
         <div>
             <h4 class="font-bold text-base text-slate-900 mb-4">Riwayat Approval</h4>
 
             @forelse($riwayat as $item)
-                <div class="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
-                    <div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 border-b border-slate-100 last:border-0">
+
+                    {{-- KIRI: INFO USER --}}
+                    <div class="min-w-0 flex-1">
                         <p class="font-semibold text-sm text-slate-900">{{ $item->user->name ?? '-' }}</p>
-                        <p class="text-xs text-slate-500">
+                        <p class="text-xs text-slate-500 mt-0.5">
                             {{ $item->tanggal->translatedFormat('d/m/Y') }} · {{ $item->total_jam }} jam
                         </p>
                         @if($item->catatan_admin)
                             <p class="text-xs text-slate-400 mt-1">📝 {{ $item->catatan_admin }}</p>
                         @endif
                     </div>
-                    <div class="text-right">
-                        @if($item->status_approval === 'approved')
-                            <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">Disetujui</span>
+
+                    {{-- TENGAH: DISETUJUI OLEH --}}
+                    <div class="sm:text-center shrink-0">
+                        <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Disetujui Oleh</p>
+                        @if($item->approver)
+                            <p class="text-sm font-semibold text-slate-700 mt-0.5">
+                                {{ $item->approver->name }}
+                            </p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">
+                                {{ $item->approved_at?->format('d M Y, H:i') }}
+                            </p>
                         @else
-                            <span class="px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold">Ditolak</span>
+                            <p class="text-sm text-slate-400 mt-0.5">—</p>
                         @endif
-                        <p class="text-[11px] text-slate-400 mt-1">
-                            oleh {{ $item->approver->name ?? '—' }}
-                        </p>
                     </div>
+
+                    {{-- KANAN: STATUS --}}
+                    <div class="sm:text-right shrink-0">
+                        @if($item->status_approval === 'approved')
+                            <span class="inline-block px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+                                Disetujui
+                            </span>
+                        @else
+                            <span class="inline-block px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold">
+                                Ditolak
+                            </span>
+                        @endif
+                    </div>
+
                 </div>
             @empty
                 <div class="rounded-2xl bg-slate-50 border border-dashed border-slate-200 py-8 text-center">
@@ -345,29 +368,53 @@
         </div>
 
 
-        {{-- RIWAYAT --}}
+        {{-- RIWAYAT LUPA ABSEN --}}
         <div>
             <h4 class="font-bold text-base text-slate-900 mb-4">Riwayat</h4>
 
             @forelse($riwayat as $item)
-                <div class="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
-                    <div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 border-b border-slate-100 last:border-0">
+
+                    {{-- KIRI: INFO USER --}}
+                    <div class="min-w-0 flex-1">
                         <p class="font-semibold text-sm text-slate-900">{{ $item->user->name ?? '-' }}</p>
-                        <p class="text-xs text-slate-500">
+                        <p class="text-xs text-slate-500 mt-0.5">
                             {{ $item->tanggal->translatedFormat('d/m/Y') }} · {{ ucfirst($item->jenis_absen) }} ·
                             {{ substr($item->jam, 0, 5) }}
                         </p>
-                    </div>
-                    <div class="text-right">
-                        @if($item->status === 'approved')
-                            <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">Disetujui</span>
-                        @else
-                            <span class="px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold">Ditolak</span>
+                        @if($item->catatan_admin)
+                            <p class="text-xs text-slate-400 mt-1">📝 {{ $item->catatan_admin }}</p>
                         @endif
-                        <p class="text-[11px] text-slate-400 mt-1">
-                            oleh {{ $item->approver->name ?? '—' }}
-                        </p>
                     </div>
+
+                    {{-- TENGAH: DISETUJUI OLEH --}}
+                    <div class="sm:text-center shrink-0">
+                        <p class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Disetujui Oleh</p>
+                        @if($item->approver)
+                            <p class="text-sm font-semibold text-slate-700 mt-0.5">
+                                {{ $item->approver->name }}
+                            </p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">
+                                {{ $item->approved_at?->format('d M Y, H:i') }}
+                            </p>
+                        @else
+                            <p class="text-sm text-slate-400 mt-0.5">—</p>
+                        @endif
+                    </div>
+
+                    {{-- KANAN: STATUS --}}
+                    <div class="sm:text-right shrink-0">
+                        @if($item->status === 'approved')
+                            <span class="inline-block px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold">
+                                Disetujui
+                            </span>
+                        @else
+                            <span class="inline-block px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold">
+                                Ditolak
+                            </span>
+                        @endif
+                    </div>
+
                 </div>
             @empty
                 <div class="rounded-2xl bg-slate-50 border border-dashed border-slate-200 py-8 text-center">

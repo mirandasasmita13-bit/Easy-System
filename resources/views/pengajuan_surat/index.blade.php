@@ -42,8 +42,8 @@
 
 
 {{-- ===================================================== --}}
-{{-- FORM BUAT SURAT
--- ===================================================== --}}
+{{-- FORM BUAT SURAT --}}
+{{-- ===================================================== --}}
 
 <div class="bg-white p-6 sm:p-7 rounded-2xl border border-slate-100 shadow-sm mb-5">
 
@@ -63,7 +63,10 @@
         </div>
     </div>
 
-    <form action="{{ route('pengajuan_surat.store') }}" method="POST" enctype="multipart/form-data">
+    <form action="{{ route('pengajuan_surat.store') }}"
+          method="POST"
+          enctype="multipart/form-data"
+          onsubmit="return handleSubmitSurat(this);">
         @csrf
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -102,11 +105,11 @@
             <div class="md:col-span-2">
                 <label class="block text-sm font-semibold text-slate-700 mb-2">
                     Dokumen Pendukung
-                    <span class="text-xs text-slate-400 font-normal"></span>
                 </label>
 
                 <input type="file" name="dokumen" id="dokumen"
                        accept=".pdf,.jpg,.jpeg,.png"
+                       required
                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-500 file:mr-4 file:rounded-lg file:border-0 file:bg-purple-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-purple-600 hover:file:bg-purple-100">
 
                 <p id="namaFileDokumen" class="hidden text-xs text-slate-400 mt-2"></p>
@@ -118,9 +121,10 @@
             <p class="text-xs text-slate-400">Pastikan informasi surat sudah benar.</p>
 
             <button type="submit"
-                    class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-purple-600 text-white text-sm font-bold shadow-lg shadow-purple-200 hover:bg-purple-700 hover:-translate-y-0.5 transition">
+                    id="btnSimpanSurat"
+                    class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-purple-600 text-white text-sm font-bold shadow-lg shadow-purple-200 hover:bg-purple-700 hover:-translate-y-0.5 transition disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0">
                 <span>✓</span>
-                Simpan Surat
+                <span id="btnSimpanSuratText">Simpan Surat</span>
             </button>
         </div>
     </form>
@@ -129,8 +133,8 @@
 
 
 {{-- ===================================================== --}}
-{{-- RIWAYAT SURAT
--- ===================================================== --}}
+{{-- RIWAYAT SURAT --}}
+{{-- ===================================================== --}}
 
 <div class="bg-white p-6 sm:p-7 rounded-2xl border border-slate-100 shadow-sm">
 
@@ -219,9 +223,7 @@
                             </svg>
                             Edit
                         </button>
-
                     </div>
-
                 </div>
             </div>
 
@@ -356,10 +358,37 @@
 
 
 {{-- ===================================================== --}}
-{{-- JAVASCRIPT
--- ===================================================== --}}
+{{-- JAVASCRIPT --}}
+{{-- ===================================================== --}}
 
 <script>
+
+/* =====================================================
+   ANTI DOUBLE SUBMIT (FORM BUAT SURAT)
+   Fungsi ini dipanggil dari onsubmit di form atas.
+===================================================== */
+
+function handleSubmitSurat(form) {
+    const btn  = document.getElementById('btnSimpanSurat');
+    const text = document.getElementById('btnSimpanSuratText');
+
+    // Kalau tombol udah disabled → batalkan submit (cegah double click)
+    if (btn.disabled) {
+        return false;
+    }
+
+    // Disable tombol & ganti teks
+    btn.disabled = true;
+    text.textContent = 'Menyimpan...';
+
+    // Lanjutkan submit
+    return true;
+}
+
+
+/* =====================================================
+   LOGIKA HALAMAN (PREVIEW, EDIT, DLL)
+===================================================== */
 
 document.addEventListener('DOMContentLoaded', function () {
 

@@ -16,10 +16,10 @@ class Absensi extends Model
         'jam_pulang',
         'keterangan',
         'status_approval',
+        'is_jaga_pos',
         'latitude',
         'longitude',
         'jarak',
-        // BARU:
         'latitude_pulang',
         'longitude_pulang',
         'jarak_pulang',
@@ -29,6 +29,7 @@ class Absensi extends Model
 
     protected $casts = [
         'tanggal'         => 'date',
+        'is_jaga_pos'     => 'boolean',
         'latitude'        => 'decimal:7',
         'longitude'       => 'decimal:7',
         'jarak'           => 'decimal:2',

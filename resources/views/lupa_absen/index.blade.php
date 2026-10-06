@@ -87,8 +87,9 @@
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-2">Tanggal</label>
                         <input type="date" name="tanggal" value="{{ old('tanggal') }}"
-                               max="{{ now()->toDateString() }}" required
-                               class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
+                            min="{{ now()->subDays(3)->toDateString() }}"
+                            max="{{ now()->toDateString() }}" required
+                            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
                     </div>
 
                     {{-- JENIS ABSEN --}}

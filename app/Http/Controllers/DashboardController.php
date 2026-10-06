@@ -45,6 +45,44 @@ class DashboardController extends Controller
 
             $hadirHariIni = $hadirPpnpn->pluck('user_id')->unique()->count();
 
+            // Sudah absen pulang hari ini 
+            $sudahPulangPpnpn = Absensi::with('user')
+            ->whereDate('tanggal', $hariIni)
+            ->whereNotNull('jam_masuk')
+            ->whereNotNull('jam_pulang')
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
+            ->get();
+
+            $sudahPulangHariIni = $sudahPulangPpnpn->pluck('user_id')->unique()->count();
+
+            // Absensi Belum Pulang
+            $absensiBelumPulang = Absensi::with('user')
+            ->whereNull('jam_pulang')
+            ->whereNotNull('jam_masuk')
+            ->where(function ($q) use ($hariIni) {
+                $q->where(function ($sub) use ($hariIni) {
+                    $sub->where('shift', 'pagi')
+                        ->whereDate('tanggal', $hariIni);
+                })
+                ->orWhere(function ($sub) {
+                    $sub->where('shift', 'malam')
+                        ->whereIn('tanggal', [
+                            today()->toDateString(),
+                            today()->subDay()->toDateString(),
+                        ]);
+                });
+            })
+            ->whereHas('user', function ($q) {
+                $q->where('role', 'ppnpn')->where('status', 'aktif');
+            })
+            ->latest('jam_masuk')
+            ->get();
+
+            $belumPulangPpnpn = $absensiBelumPulang;
+            $belumPulang      = $absensiBelumPulang->unique('user_id')->count();
+
             // PPNPN belum absen
             $userSudahAbsen = $hadirPpnpn->pluck('user_id')->unique();
 
@@ -151,22 +189,54 @@ class DashboardController extends Controller
                 ->where('tahun_cuti', '<', now()->year)
                 ->exists();
 
+            // TAMBAHAN: Jaga Pos Pagi Hari Ini (masih aktif / belum pulang)
+            $jagaPagiHariIni = Absensi::with('user')
+                ->where('is_jaga_pos', true)
+                ->whereNull('jam_pulang')
+                ->whereNotNull('jam_masuk')
+                ->where('shift', 'pagi')
+                ->whereDate('tanggal', today())
+                ->whereHas('user', function ($q) {
+                    $q->whereIn('role', ['ppnpn', 'magang'])->where('status', 'aktif');
+                })
+                ->orderBy('jam_masuk')
+                ->get();
+
+            // TAMBAHAN: Jaga Pos Malam Hari Ini (masuk hari ini sore atau kemarin sore)
+            $jagaMalamHariIni = Absensi::with('user')
+                ->where('is_jaga_pos', true)
+                ->whereNull('jam_pulang')
+                ->whereNotNull('jam_masuk')
+                ->where('shift', 'malam')
+                ->where(function ($q) {
+                    $q->whereDate('tanggal', today())
+                    ->orWhereDate('tanggal', today()->subDay());
+                })
+                ->whereHas('user', function ($q) {
+                    $q->whereIn('role', ['ppnpn', 'magang'])->where('status', 'aktif');
+                })
+                ->orderBy('jam_masuk')
+                ->get();
+
             // Alias lama (kompatibel dengan blade)
-            $ppnpn = $ppnpnAktif;
-            $totalPegawai = $totalPpnpnAktif;
-            $hadirPegawai = $hadirPpnpn;
-            $belumAbsenPegawai = $belumAbsenPpnpn;
-            $totalPpnpn = $totalPpnpnAktif;
-            $jumlahCutiBulanIni = $jumlahCuti;
-            $jumlahLupaAbsenBulanIni = $jumlahLupaAbsen;
-            $jumlahLemburBulanIni = $jumlahLembur;
+                $ppnpn = $ppnpnAktif;
+                $totalPegawai = $totalPpnpnAktif;
+                $hadirPegawai = $hadirPpnpn;
+            
+                $belumAbsenPegawai = $belumAbsenPpnpn;
+                $totalPpnpn = $totalPpnpnAktif;
+                $jumlahCutiBulanIni = $jumlahCuti;
+                $jumlahLupaAbsenBulanIni = $jumlahLupaAbsen;
+                $jumlahLemburBulanIni = $jumlahLembur;
 
             return view('dashboardadmin.index', compact(
                 'ppnpn',
                 'totalPegawai', 'totalPpnpn', 'totalPegawaiTetap',
                 'totalPpnpnAktif', 'totalPpnpnNonaktif', 'totalPpnpnSemua',
                 'hadirHariIni', 'hadirPpnpn', 'hadirPegawai',
+                'sudahPulangHariIni', 'sudahPulangPpnpn',
                 'belumAbsen', 'belumAbsenPpnpn', 'belumAbsenPegawai',
+                'belumPulang', 'belumPulangPpnpn',
                 'cutiHariIni', 'cutiHariIniData',
                 'lemburHariIni', 'lemburHariIniData',
                 'jumlahCutiBulanIni', 'jumlahLupaAbsenBulanIni',
@@ -174,7 +244,8 @@ class DashboardController extends Controller
                 'jumlahAktivitas',
                 'pendingLembur', 'pendingLupaAbsen', 'totalPendingApproval',
                 'totalJamLemburBulanIni',
-                'perluResetCuti'
+                'perluResetCuti',
+                'jagaPagiHariIni', 'jagaMalamHariIni'
             ));
         }
 

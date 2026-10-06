@@ -26,12 +26,20 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
 {
     protected $bulan;
     protected $tahun;
+    protected $role;
     protected $jumlahTanggal = 0;
 
-    public function __construct($bulan, $tahun)
+    // Ringkasan: untuk PPNPN ada 6, untuk magang cuma 1
+    protected $jumlahRingkasan = 6;
+
+    public function __construct($bulan, $tahun, $role = 'ppnpn')
     {
         $this->bulan = $bulan;
         $this->tahun = $tahun;
+        $this->role  = in_array($role, ['ppnpn', 'magang'], true) ? $role : 'ppnpn';
+
+        // ⬇️ Magang cuma punya "Hadir"
+        $this->jumlahRingkasan = ($this->role === 'magang') ? 1 : 6;
     }
 
     private function isLupaApproved($lupa): bool
@@ -50,8 +58,9 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
         $tanggalAwal  = Carbon::create($this->tahun, $this->bulan, 1)->startOfMonth();
         $tanggalAkhir = Carbon::create($this->tahun, $this->bulan, 1)->endOfMonth();
 
-        $ppnpn = User::with('profil')
-            ->where('role', 'ppnpn')
+        // ⬇️ Ambil user sesuai role
+        $users = User::with('profil')
+            ->where('role', $this->role)
             ->where('status', 'aktif')
             ->orderBy('name')
             ->get();
@@ -61,7 +70,7 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
                 $tanggalAwal->format('Y-m-d'),
                 $tanggalAkhir->format('Y-m-d'),
             ])
-            ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
+            ->whereHas('user', fn($q) => $q->where('role', $this->role)->where('status', 'aktif'))
             ->get();
 
         $absensi = [];
@@ -69,61 +78,70 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
             $absensi[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
         }
 
-        // CUTI
-        $dataCuti = Pengajuancuti::whereDate('tanggal_mulai', '<=', $tanggalAkhir)
-            ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
-            ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
-            ->get();
-
+        // ⬇️ CUTI — cuma di-load untuk PPNPN
         $cuti = [];
-        foreach ($dataCuti as $item) {
-            $mulai   = Carbon::parse($item->tanggal_mulai);
-            $selesai = Carbon::parse($item->tanggal_selesai);
-            while ($mulai->lte($selesai)) {
-                if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
-                    $cuti[$item->user_id][$mulai->format('Y-m-d')] = $item;
+        if ($this->role === 'ppnpn') {
+            $dataCuti = Pengajuancuti::whereDate('tanggal_mulai', '<=', $tanggalAkhir)
+                ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
+                ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
+                ->get();
+
+            foreach ($dataCuti as $item) {
+                $mulai   = Carbon::parse($item->tanggal_mulai);
+                $selesai = Carbon::parse($item->tanggal_selesai);
+                while ($mulai->lte($selesai)) {
+                    if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
+                        $cuti[$item->user_id][$mulai->format('Y-m-d')] = $item;
+                    }
+                    $mulai->addDay();
                 }
-                $mulai->addDay();
             }
         }
 
-        // LUPA ABSEN
-        $dataLupa = Pengajuanlupaabsen::whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
-            ->get();
-
+        // ⬇️ LUPA ABSEN — cuma untuk PPNPN
         $lupaAbsen = [];
-        foreach ($dataLupa as $item) {
-            $lupaAbsen[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
+        if ($this->role === 'ppnpn') {
+            $dataLupa = Pengajuanlupaabsen::whereBetween('tanggal', [
+                    $tanggalAwal->format('Y-m-d'),
+                    $tanggalAkhir->format('Y-m-d'),
+                ])
+                ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
+                ->get();
+
+            foreach ($dataLupa as $item) {
+                $lupaAbsen[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
+            }
         }
 
-        // SURAT SAKIT
-        $dataSakit = Pengajuansurat::whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
-            ->where(function ($q) {
-                $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
-                  ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
-                  ->orWhere(function ($sub) {
-                      $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
-                          ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
-                  });
-            })
-            ->get();
-
+        // ⬇️ SURAT SAKIT — cuma untuk PPNPN
         $suratSakit = [];
-        foreach ($dataSakit as $item) {
-            $suratSakit[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
+        if ($this->role === 'ppnpn') {
+            $dataSakit = Pengajuansurat::whereBetween('tanggal', [
+                    $tanggalAwal->format('Y-m-d'),
+                    $tanggalAkhir->format('Y-m-d'),
+                ])
+                ->whereHas('user', fn($q) => $q->where('role', 'ppnpn')->where('status', 'aktif'))
+                ->where(function ($q) {
+                    $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
+                      ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
+                      ->orWhere(function ($sub) {
+                          $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
+                              ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
+                      });
+                })
+                ->get();
+
+            foreach ($dataSakit as $item) {
+                $suratSakit[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
+            }
         }
 
-        // HEADER (baris 1: tanggal + nama hari, baris 2: jam legend)
+        // ⬇️ LABEL ROLE
+        $labelRole = $this->role === 'magang' ? 'Magang / PKL' : 'PPNPN';
+
+        // ⬇️ HEADER
         $hasil = [];
-        $header1 = ['No', 'Nama PPNPN', 'Jabatan'];
+        $header1 = ['No', 'Nama ' . $labelRole, 'Jabatan'];
         $header2 = ['', '', ''];
 
         $cursor = $tanggalAwal->copy();
@@ -134,21 +152,29 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
             $cursor->addDay();
         }
 
-        $header1[] = 'Hadir'; $header1[] = 'Cuti';  $header1[] = 'CAP';
-        $header1[] = 'Sakit'; $header1[] = 'Lupa';  $header1[] = 'Pending';
-        $header2[] = ''; $header2[] = ''; $header2[] = '';
-        $header2[] = ''; $header2[] = ''; $header2[] = '';
+        // ⬇️ KOLOM RINGKASAN — dinamis
+        if ($this->role === 'magang') {
+            // Cuma "Hadir"
+            $header1[] = 'Hadir';
+            $header2[] = '';
+        } else {
+            // PPNPN: 6 kolom
+            $header1[] = 'Hadir'; $header1[] = 'Cuti';  $header1[] = 'CAP';
+            $header1[] = 'Sakit'; $header1[] = 'Lupa';  $header1[] = 'Pending';
+            $header2[] = ''; $header2[] = ''; $header2[] = '';
+            $header2[] = ''; $header2[] = ''; $header2[] = '';
+        }
 
         $hasil[] = $header1;
         $hasil[] = $header2;
 
-        // DATA PER PPNPN
-        foreach ($ppnpn as $index => $user) {
+        // ⬇️ DATA PER USER
+        foreach ($users as $index => $user) {
 
             $baris = [
                 $index + 1,
                 $user->name,
-                $user->profil?->jabatan ?? 'PPNPN',
+                $user->profil?->jabatan ?? $labelRole,
             ];
 
             $jumlahHadir = 0; $jumlahCuti = 0; $jumlahCAP = 0;
@@ -191,28 +217,42 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
                         $kode = 'LIB';
                     }
                 } else {
-                    if ($sakitHariIni) {
-                        $kode = 'S'; $jumlahSakit++;
-                    } elseif ($cutiHariIni) {
-                        if ($cutiHariIni->jenis_cuti === 'alasan_penting') { $kode = 'CAP'; $jumlahCAP++; }
-                        else { $kode = 'C'; $jumlahCuti++; }
-                    } elseif ($absensiValid) {
-                        $kode = ($absensiHariIni->shift === 'malam') ? 'M' : 'H';
-                        $jumlahHadir++;
-                        $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
-                        $jamPulangText = $absensiHariIni->jam_pulang ? Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') : null;
-                    } elseif ($lupaApproved) {
-                        $kode = 'H'; $jumlahHadir++;
-                        $jamMasukText = $absensiHariIni && $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
-                    } elseif ($lupaHariIni && !$absensiPending) {
-                        $kode = 'LA'; $jumlahLupa++;
-                    } elseif ($absensiPending) {
-                        $kode = 'P'; $jumlahPending++;
-                        $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
+                    // ⬇️ Untuk MAGANG: cuma cek absensi (tidak ada cuti/sakit/lupa)
+                    if ($this->role === 'magang') {
+                        if ($absensiValid) {
+                            $kode = ($absensiHariIni->shift === 'malam') ? 'M' : 'H';
+                            $jumlahHadir++;
+                            $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
+                            $jamPulangText = $absensiHariIni->jam_pulang ? Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') : null;
+                        } elseif ($absensiPending) {
+                            $kode = 'P'; $jumlahPending++;
+                            $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
+                        }
+                        // selain itu, $kode tetap '-' (tidak hadir)
+                    } else {
+                        // PPNPN: logika lengkap
+                        if ($sakitHariIni) {
+                            $kode = 'S'; $jumlahSakit++;
+                        } elseif ($cutiHariIni) {
+                            if ($cutiHariIni->jenis_cuti === 'alasan_penting') { $kode = 'CAP'; $jumlahCAP++; }
+                            else { $kode = 'C'; $jumlahCuti++; }
+                        } elseif ($absensiValid) {
+                            $kode = ($absensiHariIni->shift === 'malam') ? 'M' : 'H';
+                            $jumlahHadir++;
+                            $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
+                            $jamPulangText = $absensiHariIni->jam_pulang ? Carbon::parse($absensiHariIni->jam_pulang)->format('H:i') : null;
+                        } elseif ($lupaApproved) {
+                            $kode = 'H'; $jumlahHadir++;
+                            $jamMasukText = $absensiHariIni && $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
+                        } elseif ($lupaHariIni && !$absensiPending) {
+                            $kode = 'LA'; $jumlahLupa++;
+                        } elseif ($absensiPending) {
+                            $kode = 'P'; $jumlahPending++;
+                            $jamMasukText = $absensiHariIni->jam_masuk ? Carbon::parse($absensiHariIni->jam_masuk)->format('H:i') : null;
+                        }
                     }
                 }
 
-                // Format cell: KODE di baris 1, ↓ jam masuk baris 2, ↑ jam pulang baris 3
                 $display = $kode;
                 if ($jamMasukText)  $display .= "\n↓ " . $jamMasukText;
                 if ($jamPulangText) $display .= "\n↑ " . $jamPulangText;
@@ -221,12 +261,16 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
                 $cursor->addDay();
             }
 
+            // ⬇️ KOLOM RINGKASAN — dinamis
             $baris[] = $jumlahHadir;
-            $baris[] = $jumlahCuti;
-            $baris[] = $jumlahCAP;
-            $baris[] = $jumlahSakit;
-            $baris[] = $jumlahLupa;
-            $baris[] = $jumlahPending;
+
+            if ($this->role === 'ppnpn') {
+                $baris[] = $jumlahCuti;
+                $baris[] = $jumlahCAP;
+                $baris[] = $jumlahSakit;
+                $baris[] = $jumlahLupa;
+                $baris[] = $jumlahPending;
+            }
 
             $hasil[] = $baris;
         }
@@ -236,10 +280,9 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
 
     public function styles(Worksheet $sheet): ?array
     {
-        $lastColumn = $this->jumlahTanggal + 9;
+        $lastColumn = $this->jumlahTanggal + 3 + $this->jumlahRingkasan;
         $lastColumnLetter = Coordinate::stringFromColumnIndex($lastColumn);
 
-        // Header baris 1 & 2
         $sheet->getStyle("A1:{$lastColumnLetter}2")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => '4C1D95']],
             'fill' => [
@@ -276,14 +319,17 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
             'C' => 18,
         ];
 
-        // Kolom tanggal — lebar 8.5 supaya muat "↓ 07:30"
+        // Kolom tanggal
         for ($i = 4; $i <= $this->jumlahTanggal + 3; $i++) {
             $column = Coordinate::stringFromColumnIndex($i);
             $widths[$column] = 8.5;
         }
 
         // Kolom ringkasan
-        for ($i = $this->jumlahTanggal + 4; $i <= $this->jumlahTanggal + 9; $i++) {
+        $startRingkasan = $this->jumlahTanggal + 4;
+        $endRingkasan   = $this->jumlahTanggal + 3 + $this->jumlahRingkasan;
+
+        for ($i = $startRingkasan; $i <= $endRingkasan; $i++) {
             $column = Coordinate::stringFromColumnIndex($i);
             $widths[$column] = 8;
         }
@@ -302,7 +348,6 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
                 $kolomAwalTanggal  = 4;
                 $kolomAkhirTanggal = $this->jumlahTanggal + 3;
 
-                // 🎨 PALET WARNA — SINKRON DENGAN VIEW & PDF
                 $palette = [
                     'H'   => ['D1FAE5', '065F46'],
                     'M'   => ['EDE9FE', '6D28D9'],
@@ -314,25 +359,19 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
                     'LIB' => ['FEE2E2', 'B91C1C'],
                 ];
 
-                $lastCol = Coordinate::stringFromColumnIndex($this->jumlahTanggal + 9);
+                $lastCol = Coordinate::stringFromColumnIndex($this->jumlahTanggal + 3 + $this->jumlahRingkasan);
 
-                // Wrap text seluruh tabel
                 $sheet->getStyle("A1:{$lastCol}{$highestRow}")->getAlignment()->setWrapText(true);
 
-                // Set tinggi baris data
                 for ($row = 3; $row <= $highestRow; $row++) {
                     $sheet->getRowDimension($row)->setRowHeight(34);
                 }
-
-                // Header tanggal: baris 2 = nama hari
-                // Header tanggal baris 1 sudah bernilai angka tanggal
 
                 for ($col = $kolomAwalTanggal; $col <= $kolomAkhirTanggal; $col++) {
 
                     $column = Coordinate::stringFromColumnIndex($col);
                     $tanggal = Carbon::create($this->tahun, $this->bulan, $col - 3);
 
-                    // Weekend header
                     if ($tanggal->isWeekend()) {
                         for ($r = 1; $r <= 2; $r++) {
                             $sheet->getStyle("{$column}{$r}")->getFill()->setFillType(Fill::FILL_SOLID);
@@ -341,12 +380,10 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
                         }
                     }
 
-                    // Warna per cell data (mulai baris 3)
                     for ($row = 3; $row <= $highestRow; $row++) {
                         $cell = "{$column}{$row}";
                         $value = $sheet->getCell($cell)->getValue();
 
-                        // Ambil kode = baris pertama sebelum newline
                         $kode = trim(explode("\n", (string) $value)[0] ?? '');
 
                         if (isset($palette[$kode])) {
@@ -359,15 +396,22 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
                     }
                 }
 
-                // Warna kolom ringkasan
-                $summaryColors = [
-                    4 => ['D1FAE5', '065F46'], // Hadir
-                    5 => ['FEF3C7', '92400E'], // Cuti
-                    6 => ['FFEDD5', 'C2410C'], // CAP
-                    7 => ['FFE4E6', '9F1239'], // Sakit
-                    8 => ['E0F2FE', '075985'], // Lupa
-                    9 => ['FED7AA', '9A3412'], // Pending
-                ];
+                // ⬇️ Warna kolom ringkasan — dinamis
+                $summaryColors = [];
+
+                if ($this->role === 'magang') {
+                    // Cuma "Hadir"
+                    $summaryColors[4] = ['D1FAE5', '065F46'];
+                } else {
+                    $summaryColors = [
+                        4 => ['D1FAE5', '065F46'], // Hadir
+                        5 => ['FEF3C7', '92400E'], // Cuti
+                        6 => ['FFEDD5', 'C2410C'], // CAP
+                        7 => ['FFE4E6', '9F1239'], // Sakit
+                        8 => ['E0F2FE', '075985'], // Lupa
+                        9 => ['FED7AA', '9A3412'], // Pending
+                    ];
+                }
 
                 foreach ($summaryColors as $offset => [$bg, $fg]) {
                     $colIndex = $this->jumlahTanggal + $offset;
@@ -382,7 +426,6 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
                     }
                 }
 
-                // Border
                 $sheet->getStyle("A1:{$lastCol}{$highestRow}")
                     ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
                 $sheet->getStyle("A1:{$lastCol}{$highestRow}")
@@ -391,7 +434,6 @@ class RekapabsensiExport implements FromArray, WithStyles, WithColumnWidths, Wit
                 $sheet->getStyle("D1:{$lastCol}{$highestRow}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-                // Freeze pane di baris 3 (setelah 2 baris header)
                 $sheet->freezePane('D3');
             },
         ];

@@ -6,7 +6,9 @@
 
 <div class="mb-7">
     <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">Rekap Absensi Saya</h2>
-    <p class="mt-2 text-sm sm:text-base text-slate-500">Rekap kehadiran dan aktivitas Anda dalam satu periode bulan.</p>
+    <p class="mt-2 text-sm sm:text-base text-slate-500">
+        Rekap kehadiran {{ auth()->user()->role === 'magang' ? 'magang' : '' }} Anda dalam satu periode bulan.
+    </p>
 </div>
 
 {{-- FILTER + EXPORT --}}
@@ -45,85 +47,138 @@
     </form>
 </div>
 
+@php
+    $isMagang = auth()->user()->role === 'magang';
+@endphp
+
 {{-- RINGKASAN --}}
-<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
-    <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
-        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Hadir</p>
-        <div class="mt-2 flex items-end gap-2">
-            <span class="text-3xl font-extrabold text-emerald-600">{{ $jumlahHadir ?? 0 }}</span>
-            <span class="text-xs text-slate-400 mb-1">hari</span>
+@if($isMagang)
+    {{-- Magang: cuma Hadir --}}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+        <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Hadir</p>
+            <div class="mt-2 flex items-end gap-2">
+                <span class="text-3xl font-extrabold text-emerald-600">{{ $jumlahHadir ?? 0 }}</span>
+                <span class="text-xs text-slate-400 mb-1">hari</span>
+            </div>
+        </div>
+        <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Hari Kerja</p>
+            <div class="mt-2 flex items-end gap-2">
+                <span class="text-3xl font-extrabold text-purple-600">{{ $totalHariKerja ?? 0 }}</span>
+                <span class="text-xs text-slate-400 mb-1">hari</span>
+            </div>
+        </div>
+        <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Persentase</p>
+            <div class="mt-2 flex items-end gap-2">
+                @php
+                    $persen = ($totalHariKerja ?? 0) > 0
+                        ? round(($jumlahHadir ?? 0) / $totalHariKerja * 100)
+                        : 0;
+                @endphp
+                <span class="text-3xl font-extrabold text-emerald-600">{{ $persen }}%</span>
+                <span class="text-xs text-slate-400 mb-1">kehadiran</span>
+            </div>
         </div>
     </div>
-    <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
-        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cuti</p>
-        <div class="mt-2 flex items-end gap-2">
-            <span class="text-3xl font-extrabold text-amber-600">{{ ($jumlahCutiTahunan ?? 0) + ($jumlahCutiAlasanPenting ?? 0) }}</span>
-            <span class="text-xs text-slate-400 mb-1">hari</span>
+@else
+    {{-- PPNPN: ringkasan lengkap --}}
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-5">
+        <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Hadir</p>
+            <div class="mt-2 flex items-end gap-2">
+                <span class="text-3xl font-extrabold text-emerald-600">{{ $jumlahHadir ?? 0 }}</span>
+                <span class="text-xs text-slate-400 mb-1">hari</span>
+            </div>
+        </div>
+        <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cuti</p>
+            <div class="mt-2 flex items-end gap-2">
+                <span class="text-3xl font-extrabold text-amber-600">{{ ($jumlahCutiTahunan ?? 0) + ($jumlahCutiAlasanPenting ?? 0) }}</span>
+                <span class="text-xs text-slate-400 mb-1">hari</span>
+            </div>
+        </div>
+        <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Surat Sakit</p>
+            <div class="mt-2 flex items-end gap-2">
+                <span class="text-3xl font-extrabold text-rose-600">{{ $jumlahSakit ?? 0 }}</span>
+                <span class="text-xs text-slate-400 mb-1">hari</span>
+            </div>
+        </div>
+        <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Lembur</p>
+            <div class="mt-2 flex items-end gap-2">
+                <span class="text-3xl font-extrabold text-indigo-600">{{ $jumlahLembur ?? 0 }}</span>
+                <span class="text-xs text-slate-400 mb-1">hari</span>
+            </div>
+        </div>
+        <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
+            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending</p>
+            <div class="mt-2 flex items-end gap-2">
+                <span class="text-3xl font-extrabold text-orange-600">{{ $jumlahPending ?? 0 }}</span>
+                <span class="text-xs text-slate-400 mb-1">hari</span>
+            </div>
         </div>
     </div>
-    <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
-        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Surat Sakit</p>
-        <div class="mt-2 flex items-end gap-2">
-            <span class="text-3xl font-extrabold text-rose-600">{{ $jumlahSakit ?? 0 }}</span>
-            <span class="text-xs text-slate-400 mb-1">hari</span>
-        </div>
-    </div>
-    <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
-        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Lembur</p>
-        <div class="mt-2 flex items-end gap-2">
-            <span class="text-3xl font-extrabold text-indigo-600">{{ $jumlahLembur ?? 0 }}</span>
-            <span class="text-xs text-slate-400 mb-1">hari</span>
-        </div>
-    </div>
-    <div class="bg-white px-5 py-5 rounded-2xl border border-slate-100 shadow-sm">
-        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pending</p>
-        <div class="mt-2 flex items-end gap-2">
-            <span class="text-3xl font-extrabold text-orange-600">{{ $jumlahPending ?? 0 }}</span>
-            <span class="text-xs text-slate-400 mb-1">hari</span>
-        </div>
-    </div>
-</div>
+@endif
 
 {{-- LEGEND --}}
 <div class="bg-white px-5 py-4 rounded-2xl border border-slate-100 shadow-sm mb-5">
     <div class="flex flex-wrap items-center gap-x-5 gap-y-3">
         <span class="text-xs font-bold text-slate-500 mr-1">Keterangan:</span>
+
+        {{-- H — semua role --}}
         <div class="flex items-center gap-2">
             <span class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200 flex items-center justify-center text-[11px] font-extrabold">H</span>
             <span class="text-xs text-slate-500">Shift Pagi</span>
         </div>
-        <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-violet-100 text-violet-800 ring-1 ring-violet-200 flex items-center justify-center text-[10px] font-extrabold">M</span>
-            <span class="text-xs text-slate-500">Shift Malam</span>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 ring-1 ring-amber-200 flex items-center justify-center text-[10px] font-extrabold">C</span>
-            <span class="text-xs text-slate-500">Cuti Tahunan</span>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-orange-100 text-orange-800 ring-1 ring-orange-200 flex items-center justify-center text-[9px] font-extrabold">CAP</span>
-            <span class="text-xs text-slate-500">Cuti Alasan Penting</span>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-800 ring-1 ring-sky-200 flex items-center justify-center text-[9px] font-extrabold">LA</span>
-            <span class="text-xs text-slate-500">Lupa Absen</span>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-rose-100 text-rose-800 ring-1 ring-rose-200 flex items-center justify-center text-[11px] font-extrabold">S</span>
-            <span class="text-xs text-slate-500">Surat Sakit</span>
-        </div>
-        <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-orange-200 text-orange-900 ring-1 ring-orange-300 flex items-center justify-center text-[10px] font-extrabold">P</span>
-            <span class="text-xs text-slate-500">Pending</span>
-        </div>
+
+        {{-- M — cuma PPNPN --}}
+        @if(!$isMagang)
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-violet-100 text-violet-800 ring-1 ring-violet-200 flex items-center justify-center text-[10px] font-extrabold">M</span>
+                <span class="text-xs text-slate-500">Shift Malam</span>
+            </div>
+        @endif
+
+        {{-- C, CAP, LA, S, P, L — cuma PPNPN --}}
+        @if(!$isMagang)
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-amber-100 text-amber-800 ring-1 ring-amber-200 flex items-center justify-center text-[10px] font-extrabold">C</span>
+                <span class="text-xs text-slate-500">Cuti Tahunan</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-orange-100 text-orange-800 ring-1 ring-orange-200 flex items-center justify-center text-[9px] font-extrabold">CAP</span>
+                <span class="text-xs text-slate-500">Cuti Alasan Penting</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-sky-100 text-sky-800 ring-1 ring-sky-200 flex items-center justify-center text-[9px] font-extrabold">LA</span>
+                <span class="text-xs text-slate-500">Lupa Absen</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-rose-100 text-rose-800 ring-1 ring-rose-200 flex items-center justify-center text-[11px] font-extrabold">S</span>
+                <span class="text-xs text-slate-500">Surat Sakit</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-orange-200 text-orange-900 ring-1 ring-orange-300 flex items-center justify-center text-[10px] font-extrabold">P</span>
+                <span class="text-xs text-slate-500">Pending</span>
+            </div>
+        @endif
+
+        {{-- LIB — semua role --}}
         <div class="flex items-center gap-2">
             <span class="w-7 h-7 rounded-lg bg-red-100 text-red-800 ring-1 ring-red-200 flex items-center justify-center text-[8px] font-extrabold">LIB</span>
             <span class="text-xs text-slate-500">Hari Libur</span>
         </div>
-        <div class="flex items-center gap-2">
-            <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200 flex items-center justify-center text-[10px] font-extrabold">L</span>
-            <span class="text-xs text-slate-500">Lembur</span>
-        </div>
+
+        {{-- L — cuma PPNPN --}}
+        @if(!$isMagang)
+            <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200 flex items-center justify-center text-[10px] font-extrabold">L</span>
+                <span class="text-xs text-slate-500">Lembur</span>
+            </div>
+        @endif
     </div>
 </div>
 
@@ -184,7 +239,8 @@
                         @if($absensiValid)
                             @php
                                 $jamMasuk = \Carbon\Carbon::parse($absensiHariIni->jam_masuk);
-                                if ($absensiHariIni->shift === 'malam' || $jamMasuk->hour >= 18) {
+                                // ⬇️ Magang selalu H
+                                if (!$isMagang && ($absensiHariIni->shift === 'malam' || $jamMasuk->hour >= 18)) {
                                     $kode = 'M'; $warna = 'bg-violet-100 text-violet-800 ring-1 ring-violet-200';
                                     $keterangan = 'Hadir shift malam';
                                 } else {
@@ -203,17 +259,17 @@
                             @endphp
                         @elseif($hari->isWeekend())
                             @php $kode = 'LIB'; $warna = 'bg-red-100 text-red-800 ring-1 ring-red-200'; $keterangan = 'Hari libur'; @endphp
-                        @elseif($cutiHariIni)
+                        @elseif(!$isMagang && $cutiHariIni)
                             @if($cutiHariIni->jenis_cuti === 'tahunan')
                                 @php $kode = 'C'; $warna = 'bg-amber-100 text-amber-800 ring-1 ring-amber-200'; $keterangan = 'Cuti tahunan'; @endphp
                             @elseif($cutiHariIni->jenis_cuti === 'alasan_penting')
                                 @php $kode = 'CAP'; $warna = 'bg-orange-100 text-orange-800 ring-1 ring-orange-200'; $keterangan = 'Cuti alasan penting'; @endphp
                             @endif
-                        @elseif($suratSakitHariIni)
+                        @elseif(!$isMagang && $suratSakitHariIni)
                             @php $kode = 'S'; $warna = 'bg-rose-100 text-rose-800 ring-1 ring-rose-200'; $keterangan = 'Surat izin sakit'; @endphp
-                        @elseif($lupaApproved)
+                        @elseif(!$isMagang && $lupaApproved)
                             @php $kode = 'H'; $warna = 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200'; $keterangan = 'Lupa absen disetujui'; @endphp
-                        @elseif($lupaHariIni)
+                        @elseif(!$isMagang && $lupaHariIni)
                             @php $kode = 'LA'; $warna = 'bg-sky-100 text-sky-800 ring-1 ring-sky-200'; $keterangan = 'Lupa absen'; @endphp
                         @endif
 
@@ -228,7 +284,7 @@
                                         @if($jamPulangText)<div class="whitespace-nowrap">↑ {{ $jamPulangText }}</div>@endif
                                     </div>
                                 @endif
-                                @if($lemburHariIni)
+                                @if(!$isMagang && $lemburHariIni)
                                     <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[8px] font-extrabold ring-2 ring-white" title="Lembur">L</span>
                                 @endif
                             </div>
@@ -291,14 +347,15 @@
                                     <span class="inline-flex rounded-lg bg-orange-200 px-2.5 py-1 text-[10px] font-bold text-orange-900 ring-1 ring-orange-300">⏳ Pending</span>
                                 @elseif($absensiHariIni && $absensiHariIni->jam_masuk)
                                     @php $jamMasuk = \Carbon\Carbon::parse($absensiHariIni->jam_masuk); @endphp
-                                    @if($absensiHariIni->shift === 'malam' || $jamMasuk->hour >= 18)
+                                    {{-- ⬇️ Magang selalu H --}}
+                                    @if(!$isMagang && ($absensiHariIni->shift === 'malam' || $jamMasuk->hour >= 18))
                                         <span class="inline-flex rounded-lg bg-violet-100 px-2.5 py-1 text-[10px] font-bold text-violet-800 ring-1 ring-violet-200">M — Shift Malam</span>
                                     @else
                                         <span class="inline-flex rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-800 ring-1 ring-emerald-200">H — Shift Pagi</span>
                                     @endif
                                 @elseif($hari->isWeekend())
                                     <span class="inline-flex rounded-lg bg-red-100 px-2.5 py-1 text-[10px] font-bold text-red-800 ring-1 ring-red-200">LIB — Hari Libur</span>
-                                @elseif($cutiHariIni)
+                                @elseif(!$isMagang && $cutiHariIni)
                                     @if($cutiHariIni->jenis_cuti === 'tahunan')
                                         <span class="inline-flex rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-800 ring-1 ring-amber-200">C — Cuti Tahunan</span>
                                     @elseif($cutiHariIni->jenis_cuti === 'alasan_penting')
@@ -306,11 +363,11 @@
                                     @else
                                         <span class="inline-flex rounded-lg bg-amber-100 px-2.5 py-1 text-[10px] font-bold text-amber-800 ring-1 ring-amber-200">C — Cuti</span>
                                     @endif
-                                @elseif($suratSakitHariIni)
+                                @elseif(!$isMagang && $suratSakitHariIni)
                                     <span class="inline-flex rounded-lg bg-rose-100 px-2.5 py-1 text-[10px] font-bold text-rose-800 ring-1 ring-rose-200">S — Surat Sakit</span>
-                                @elseif($lupaApproved)
+                                @elseif(!$isMagang && $lupaApproved)
                                     <span class="inline-flex rounded-lg bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-800 ring-1 ring-emerald-200">H — Lupa Absen Disetujui</span>
-                                @elseif($lupaHariIni)
+                                @elseif(!$isMagang && $lupaHariIni)
                                     <span class="inline-flex rounded-lg bg-sky-100 px-2.5 py-1 text-[10px] font-bold text-sky-800 ring-1 ring-sky-200">LA — Lupa Absen</span>
                                 @else
                                     <span class="inline-flex rounded-lg bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-400 ring-1 ring-slate-200">Belum Absen</span>
@@ -334,22 +391,24 @@
                             </td>
                             <td class="px-5 py-4">
                                 <div class="flex flex-wrap items-center gap-2">
-                                    @if($lemburHariIni)
+                                    @if(!$isMagang && $lemburHariIni)
                                         <span class="inline-flex rounded-lg bg-indigo-100 px-2 py-1 text-[10px] font-bold text-indigo-800 ring-1 ring-indigo-200">Lembur</span>
                                     @endif
                                     @if($absensiHariIni && $absensiHariIni->status_approval === 'pending' && !$lupaApproved)
                                         <span class="text-xs text-orange-600 font-semibold">Menunggu persetujuan admin</span>
-                                    @elseif($suratSakitHariIni)
+                                    @elseif(!$isMagang && $suratSakitHariIni)
                                         <span class="text-xs text-slate-500">{{ $suratSakitHariIni->keperluan }}</span>
-                                    @elseif($cutiHariIni)
+                                    @elseif(!$isMagang && $cutiHariIni)
                                         <span class="text-xs text-slate-500">{{ $cutiHariIni->keterangan ?? 'Cuti tercatat' }}</span>
-                                    @elseif($lupaApproved)
+                                    @elseif(!$isMagang && $lupaApproved)
                                         <span class="text-xs text-emerald-600 font-semibold">Lupa absen disetujui</span>
-                                    @elseif($lupaHariIni)
+                                    @elseif(!$isMagang && $lupaHariIni)
                                         <span class="text-xs text-slate-500">Lupa/perbaikan absensi</span>
                                     @elseif($absensiHariIni && $absensiHariIni->jam_masuk)
                                         @php $jamMasuk = \Carbon\Carbon::parse($absensiHariIni->jam_masuk); @endphp
-                                        <span class="text-xs text-slate-500">{{ ($absensiHariIni->shift === 'malam' || $jamMasuk->hour >= 18) ? 'Shift malam' : 'Shift pagi' }}</span>
+                                        <span class="text-xs text-slate-500">
+                                            {{ (!$isMagang && ($absensiHariIni->shift === 'malam' || $jamMasuk->hour >= 18)) ? 'Shift malam' : 'Shift pagi' }}
+                                        </span>
                                     @elseif($hari->isWeekend())
                                         <span class="text-xs text-red-400">Hari libur</span>
                                     @else
@@ -368,8 +427,10 @@
 <div class="mt-4 px-5 sm:px-6 py-4 rounded-2xl border border-slate-100 bg-slate-50/70">
     <p class="text-xs leading-relaxed text-slate-400">
         Sabtu dan Minggu otomatis ditandai sebagai hari libur.
-        Absensi dengan status <strong>pending</strong> tidak dihitung sebagai kehadiran sampai admin menyetujui.
-        Lupa absen yang <strong>sudah disetujui</strong> otomatis dihitung sebagai kehadiran.
+        @if(!$isMagang)
+            Absensi dengan status <strong>pending</strong> tidak dihitung sebagai kehadiran sampai admin menyetujui.
+            Lupa absen yang <strong>sudah disetujui</strong> otomatis dihitung sebagai kehadiran.
+        @endif
         <strong>↓ = jam masuk · ↑ = jam pulang.</strong>
     </p>
 </div>

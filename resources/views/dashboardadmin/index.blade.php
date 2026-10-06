@@ -11,7 +11,7 @@
     <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
 
         <div>
-            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
                 Selamat Datang, {{ auth()->user()->name }}
             </h1>
             <p class="mt-1 text-sm text-slate-500">
@@ -210,6 +210,120 @@
 
     </div>
 
+    {{-- =====================================================
+            WIDGET: JAGA POS HARI INI (2 KOLOM)
+        ====================================================== --}}
+        <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
+            {{-- HEADER WIDGET --}}
+            <div class="px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-white">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center shrink-0 text-xl">
+                        🛡️
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900">Jaga Pos Hari Ini</h3>
+                        <p class="text-xs text-slate-500 mt-0.5">
+                            {{ now()->translatedFormat('l, d F Y') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- 2 KOLOM: PAGI | MALAM --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+
+                {{-- KOLOM KIRI: SHIFT PAGI --}}
+                <div class="p-5">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-lg">☀️</span>
+                        <p class="text-xs font-bold uppercase tracking-wider text-amber-700">
+                            Shift Pagi
+                        </p>
+                        <span class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-2 rounded-full bg-amber-100 text-amber-700 text-[11px] font-bold">
+                            {{ ($jagaPagiHariIni ?? collect())->count() }}
+                        </span>
+                    </div>
+
+                    @if(isset($jagaPagiHariIni) && $jagaPagiHariIni->count() > 0)
+                        <div class="space-y-2">
+                            @foreach($jagaPagiHariIni as $item)
+                                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                    <div class="w-9 h-9 rounded-full
+                                                {{ $item->user->role === 'magang' ? 'bg-amber-500 text-white' : 'bg-purple-600 text-white' }}
+                                                flex items-center justify-center font-bold shrink-0 text-sm">
+                                        {{ strtoupper(substr($item->user->name, 0, 1)) }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-slate-800 truncate">
+                                            {{ $item->user->name }}
+                                        </p>
+                                        <p class="text-[10px] text-slate-400 mt-0.5">
+                                            Masuk {{ \Carbon\Carbon::parse($item->jam_masuk)->format('H:i') }}
+                                        </p>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="rounded-xl bg-slate-50 border border-dashed border-slate-200 py-4 px-4 text-center">
+                            <p class="text-xs text-slate-400">
+                                Belum ada yang input jaga pos pagi.
+                            </p>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- KOLOM KANAN: SHIFT MALAM --}}
+                <div class="p-5">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-lg">🌙</span>
+                        <p class="text-xs font-bold uppercase tracking-wider text-violet-700">
+                            Shift Malam
+                        </p>
+                        <span class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-2 rounded-full bg-violet-100 text-violet-700 text-[11px] font-bold">
+                            {{ ($jagaMalamHariIni ?? collect())->count() }}
+                        </span>
+                    </div>
+
+                    @if(isset($jagaMalamHariIni) && $jagaMalamHariIni->count() > 0)
+                        <div class="space-y-2">
+                            @foreach($jagaMalamHariIni as $item)
+                                @php
+                                    $masukKemarin = \Carbon\Carbon::parse($item->tanggal)->isYesterday();
+                                @endphp
+                                <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                                    <div class="w-9 h-9 rounded-full
+                                                {{ $item->user->role === 'magang' ? 'bg-amber-500 text-white' : 'bg-purple-600 text-white' }}
+                                                flex items-center justify-center font-bold shrink-0 text-sm">
+                                        {{ strtoupper(substr($item->user->name, 0, 1)) }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-semibold text-slate-800 truncate">
+                                            {{ $item->user->name }}
+                                        </p>
+                                        <p class="text-[10px] text-slate-400 mt-0.5">
+                                            Masuk {{ \Carbon\Carbon::parse($item->jam_masuk)->format('H:i') }}
+                                            @if($masukKemarin)
+                                                · {{ \Carbon\Carbon::parse($item->tanggal)->translatedFormat('d M') }}
+                                            @endif
+                                        </p>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="rounded-xl bg-slate-50 border border-dashed border-slate-200 py-4 px-4 text-center">
+                            <p class="text-xs text-slate-400">
+                                Belum ada yang input jaga pos malam.
+                            </p>
+                        </div>
+                    @endif
+                </div>
+
+            </div>
+
+        </div>
 
     {{-- =====================================================
         INFO PENDING LAIN (kalau ada)
@@ -276,23 +390,71 @@
 
     {{-- DATA HADIR --}}
     <div id="dataHadir">
-        @forelse($hadirPegawai as $item)
-            <div class="flex items-center justify-between border-b border-slate-100 py-3">
-                <div>
-                    <p class="text-sm font-semibold text-slate-800">
+        @forelse($hadirPpnpn as $item)
+            <div class="flex items-center justify-between border-b border-slate-100 py-3 last:border-0">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-slate-800 truncate">
                         {{ $item->user?->name ?? '-' }}
                     </p>
-                    <p class="mt-1 text-xs text-slate-400">Sudah absen masuk</p>
+                    @if($item->shift)
+                        <p class="mt-1 text-xs text-slate-400">
+                            Shift {{ $item->shift === 'malam' ? 'Malam' : 'Pagi' }}
+                        </p>
+                    @endif
                 </div>
-                <span class="text-sm font-medium text-emerald-600">
-                    {{ $item->jam_masuk
-                        ? \Carbon\Carbon::parse($item->jam_masuk)->format('H:i')
-                        : '-' }}
-                </span>
+
+                <div class="flex items-center gap-2 shrink-0 ml-3">
+                    {{-- Jam Masuk --}}
+                    <span class="text-xs font-semibold text-emerald-600">
+                        {{ $item->jam_masuk ? \Carbon\Carbon::parse($item->jam_masuk)->format('H:i') : '--:--' }}
+                    </span>
+
+                    <span class="text-slate-300">–</span>
+
+                    {{-- Jam Pulang --}}
+                    @if($item->jam_pulang)
+                        <span class="text-xs font-semibold text-blue-600">
+                            {{ \Carbon\Carbon::parse($item->jam_pulang)->format('H:i') }}
+                        </span>
+                    @else
+                        <span class="text-xs font-semibold text-amber-600">
+                            --:--
+                        </span>
+                    @endif
+                </div>
             </div>
         @empty
             <div class="py-8 text-center text-sm text-slate-400">
-                Belum ada pegawai yang absen hari ini.
+                Belum ada PPNPN yang absen hari ini.
+            </div>
+        @endforelse
+    </div>
+
+    {{-- DATA SUDAH PULANG --}}
+    <div id="dataSudahPulang">
+        @forelse($sudahPulangPpnpn as $item)
+            <div class="flex items-center justify-between border-b border-slate-100 py-3 last:border-0">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold text-slate-800 truncate">
+                        {{ $item->user?->name ?? '-' }}
+                    </p>
+                    <p class="mt-1 text-xs text-slate-400">
+                        Shift {{ $item->shift === 'malam' ? 'Malam' : 'Pagi' }}
+                    </p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0 ml-3">
+                    <span class="text-xs font-semibold text-emerald-600">
+                        {{ $item->jam_masuk ? \Carbon\Carbon::parse($item->jam_masuk)->format('H:i') : '--:--' }}
+                    </span>
+                    <span class="text-slate-300">–</span>
+                    <span class="text-xs font-semibold text-sky-600">
+                        {{ $item->jam_pulang ? \Carbon\Carbon::parse($item->jam_pulang)->format('H:i') : '--:--' }}
+                    </span>
+                </div>
+            </div>
+        @empty
+            <div class="py-8 text-center text-sm text-slate-400">
+                Belum ada yang absen pulang hari ini.
             </div>
         @endforelse
     </div>
@@ -352,7 +514,6 @@
 
 </div>
 
-
 {{-- =====================================================
     MODAL AKTIVITAS
 ====================================================== --}}
@@ -411,6 +572,11 @@
         if (jenis === 'hadir') {
             judul.textContent = 'PPNPN yang Sudah Absen';
             sumber = document.getElementById('dataHadir');
+        }
+
+        if (jenis === 'sudahPulang') {
+            judul.textContent = 'PPNPN yang Sudah Pulang';
+            sumber = document.getElementById('dataSudahPulang');
         }
 
         if (jenis === 'belumAbsen') {

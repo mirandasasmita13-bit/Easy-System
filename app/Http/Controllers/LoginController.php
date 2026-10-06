@@ -41,14 +41,27 @@ class LoginController extends Controller
         return redirect('/login');
     }
 
+
     // REGISTER
     public function register()
     {
+        // Cek dulu: pendaftaran dibuka atau tidak?
+        if (!User::pendaftaranDibuka()) {
+            return redirect()->route('login')
+                ->with('error', 'Pendaftaran sedang ditutup. Silakan hubungi admin.');
+        }
+
         return view('auth.register');
     }
 
     public function storeRegister(Request $request)
     {
+        // Cek dulu: pendaftaran dibuka atau tidak?
+        if (!User::pendaftaranDibuka()) {
+            return redirect()->route('login')
+                ->with('error', 'Pendaftaran sedang ditutup. Silakan hubungi admin.');
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
 
@@ -66,13 +79,16 @@ class LoginController extends Controller
                 'min:8',
                 'confirmed',
             ],
+
+            // ROLE: cuma boleh ppnpn atau magang
+            'role' => ['required', 'in:ppnpn,magang'],
         ]);
 
         User::create([
             'name'                   => $data['name'],
             'username'               => $data['username'],
             'password'               => $data['password'],
-            'role'                   => 'ppnpn',
+            'role'                   => $data['role'],     // dari form
             'status'                 => 'aktif',
             'jatah_cuti_tahunan'     => 12,
             'cuti_tahunan_sebelumnya'=> 0,

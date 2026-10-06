@@ -56,6 +56,7 @@ Route::middleware('auth')->group(function () {
     // CUTI (PPNPN)
     Route::get('/pengajuan_cuti',  [PengajuancutiController::class, 'index'])->name('pengajuan_cuti.index');
     Route::post('/pengajuan_cuti', [PengajuancutiController::class, 'store'])->name('pengajuan_cuti.store');
+    Route::put('/pengajuan_cuti/{pengajuancuti}', [PengajuancutiController::class, 'update'])->name('pengajuan_cuti.update');
 
     // LUPA ABSEN
     Route::get('/lupa-absen',  [PengajuanlupaabsenController::class, 'index'])->name('lupa-absen.index');
@@ -92,6 +93,19 @@ Route::middleware('auth')->group(function () {
     // Preview File
     Route::get('/file/{type}/{id}', [FileController::class, 'preview'])->name('file.preview');
 
+    // Aktif dan Nonaktifkan pendaftaran 
+    Route::post('/admin/toggle-pendaftaran', function () {
+    if (auth()->user()->role !== 'admin') {
+        abort(403);
+    }
+
+    $status = \App\Models\User::togglePendaftaran();
+
+    return back()->with(
+        'success',
+        'Pendaftaran berhasil ' . ($status ? 'dibuka' : 'ditutup') . '.'
+    );
+    })->middleware('auth')->name('admin.toggle-pendaftaran');
 
     // ============================================
     // ADMIN ONLY

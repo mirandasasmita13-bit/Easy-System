@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'role',
     'status',
     'tanggal_nonaktif',
+    'pendaftaran_dibuka',
 
     // Manajemen cuti
     'jatah_cuti_tahunan',
@@ -43,10 +44,11 @@ class User extends Authenticatable
             'jatah_cuti_tahunan'      => 'integer',
             'cuti_tahunan_sebelumnya' => 'integer',
             'tahun_cuti'              => 'integer',
+            'pendaftaran_dibuka'      => 'boolean',
         ];
     }
 
-    // --- RELASI ---
+    // RELASI
 
     public function profil(): HasOne
     {
@@ -78,6 +80,11 @@ class User extends Authenticatable
         return $this->hasMany(Pengajuansurat::class);
     }
 
+    public function cutiSebelumnya(): HasMany
+    {
+        return $this->hasMany(CutiSebelumnya::class, 'user_id');
+    }
+
     // --- SCOPE ---
 
     public function scopePpnpnAktif($query)
@@ -90,9 +97,11 @@ class User extends Authenticatable
         return $query->where('role', 'ppnpn');
     }
 
-/**
- * Cuti tahunan yang diinput admin (sebelum sistem berjalan).
- */
+    // --- CUTI ---
+
+    /**
+     * Cuti tahunan yang diinput admin (sebelum sistem berjalan).
+     */
     public function cutiManualDiTahun(): int
     {
         return $this->cutiSebelumnya()
@@ -101,9 +110,9 @@ class User extends Authenticatable
             ->sum('jumlah_hari');
     }
 
-/**
- * Cuti tahunan dari pengajuan PPNPN di sistem.
- */
+    /**
+     * Cuti tahunan dari pengajuan PPNPN di sistem.
+     */
     public function cutiTahunanDiSistem(): int
     {
         return $this->pengajuancuti()
@@ -112,24 +121,46 @@ class User extends Authenticatable
             ->sum('jumlah_hari');
     }
 
-/**
- * Total cuti tahunan terpakai = manual + sistem.
- */
+    /**
+     * Total cuti tahunan terpakai = manual + sistem.
+     */
     public function totalCutiTerpakai(): int
     {
         return $this->cutiManualDiTahun() + $this->cutiTahunanDiSistem();
     }
 
-/**
- * Sisa cuti tahunan.
- */
+    /**
+     * Sisa cuti tahunan.
+     */
     public function sisaCutiTahunan(): int
     {
         return max(0, $this->jatah_cuti_tahunan - $this->totalCutiTerpakai());
     }
 
-    public function cutiSebelumnya(): HasMany
+    
+    // PENGATURAN PENDAFTARAN
+    /**
+     * Cek apakah pendaftaran sedang dibuka.
+     * Dicek dari user admin yang flag-nya true.
+     */
+    public static function pendaftaranDibuka(): bool
     {
-        return $this->hasMany(CutiSebelumnya::class, 'user_id');
+        return static::where('role', 'admin')
+            ->where('pendaftaran_dibuka', true)
+            ->exists();
+    }
+
+    /**
+     * Buka/tutup pendaftaran.
+     * Return status baru (true = dibuka, false = ditutup).
+     */
+    public static function togglePendaftaran(): bool
+    {
+        $current = static::pendaftaranDibuka();
+
+        static::where('role', 'admin')
+            ->update(['pendaftaran_dibuka' => !$current]);
+
+        return !$current;
     }
 }

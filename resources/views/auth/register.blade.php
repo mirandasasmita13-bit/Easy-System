@@ -4,146 +4,199 @@
 
 @section('content')
 
-<div class="min-h-screen flex items-center justify-center py-10">
-    <div class="w-full max-w-md">
+<div class="auth-container">
+    <div class="auth-wrapper">
 
-        {{-- HEADER --}}
-        <div class="text-center mb-8">
-            <div class="mx-auto w-14 h-14 rounded-2xl bg-purple-500 flex items-center justify-center text-white text-2xl font-bold">
-                E
-            </div>
-            <h1 class="mt-5 text-2xl font-extrabold text-slate-900">Buat Akun</h1>
-            <p class="mt-1 text-slate-500">Daftar untuk mengakses SIKAT.</p>
-        </div>
+        {{-- LOGO DI ATAS CARD --}}
+        <a href="{{ url('/') }}" class="auth-logo">
+            <img src="{{ asset('images/logoo.png') }}" alt="Logo SIKAT">
+        </a>
 
-        <div class="bg-white border border-slate-200 rounded-2xl p-7 shadow-sm">
+        {{-- CARD --}}
+        <div class="auth-card">
+
+            {{-- TITLE --}}
+            <h2 class="auth-welcome-title">
+                Buat akun <span>baru</span>
+            </h2>
+
+            <p class="auth-welcome-description">
+                Daftarkan akun untuk mengakses SIKAT.
+            </p>
+
 
             {{-- ERROR --}}
             @if ($errors->any())
-                <div class="mb-5 rounded-xl bg-red-50 border border-red-100 p-4">
-                    <ul class="text-sm text-red-600 list-disc list-inside space-y-1">
+                <div class="auth-alert auth-alert-error">
+                    <ul style="list-style: none; padding: 0; margin: 0;">
                         @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
+                            <li>• {{ $error }}</li>
                         @endforeach
                     </ul>
                 </div>
             @endif
 
 
-            <form method="POST" action="{{ route('register.store') }}">
+            {{-- FORM --}}
+            <form method="POST" action="{{ route('register.store') }}" class="auth-form">
                 @csrf
 
                 {{-- NAMA --}}
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">
-                        Nama Lengkap
-                    </label>
-                    <input type="text" name="name" value="{{ old('name') }}" required autofocus
-                           class="w-full px-4 py-3 rounded-xl border border-slate-200
-                                  focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                <div class="auth-field">
+                    <label class="auth-label">Nama Lengkap</label>
+                    <input type="text"
+                           name="name"
+                           value="{{ old('name') }}"
+                           required
+                           autofocus
+                           autocomplete="name"
+                           class="auth-input"
                            placeholder="Masukkan nama lengkap">
                 </div>
 
                 {{-- USERNAME --}}
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">
-                        ID / Username
-                    </label>
-                    <input type="text" name="username" value="{{ old('username') }}" required
+                <div class="auth-field">
+                    <label class="auth-label">ID / Username</label>
+                    <input type="text"
+                           name="username"
+                           value="{{ old('username') }}"
+                           required
                            pattern="[a-zA-Z0-9._-]+"
-                           class="w-full px-4 py-3 rounded-xl border border-slate-200
-                                  focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                           autocomplete="username"
+                           class="auth-input"
                            placeholder="contoh: budi.santoso">
-                    <p class="text-xs text-slate-400 mt-1">
-                        Hanya huruf, angka, titik, garis bawah, dan tanda hubung.
+                    <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
+                        Huruf, angka, titik, garis bawah, dan tanda hubung.
                     </p>
                 </div>
 
-                {{-- PASSWORD + EYE --}}
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">
-                        Password
-                    </label>
+                {{-- ROLE --}}
+                <div class="auth-field">
+                    <label class="auth-label">Daftar Sebagai</label>
+                    <select name="role" required class="auth-input">
+                        <option value="">— Pilih status —</option>
+                        <option value="ppnpn"  {{ old('role') === 'ppnpn'  ? 'selected' : '' }}>PPNPN</option>
+                        <option value="magang" {{ old('role') === 'magang' ? 'selected' : '' }}>Magang / PKL</option>
+                    </select>
+                    <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
+                        Pilih sesuai status kamu di instansi.
+                    </p>
+                </div>
 
-                    <div class="relative">
-                        <input type="password" id="password" name="password" required minlength="8"
-                               class="w-full px-4 pr-12 py-3 rounded-xl border border-slate-200
-                                      focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                {{-- PASSWORD --}}
+                <div class="auth-field">
+                    <label class="auth-label">Password</label>
+
+                    <div class="auth-password">
+                        <input type="password"
+                               id="password"
+                               name="password"
+                               required
+                               minlength="8"
+                               autocomplete="new-password"
+                               class="auth-input"
                                placeholder="Minimal 8 karakter">
 
                         <button type="button"
                                 onclick="togglePassword('password', this)"
+                                class="auth-eye"
                                 tabindex="-1"
-                                aria-label="Toggle password visibility"
-                                class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-purple-600 transition">
-                            <svg class="w-5 h-5 eye-off" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                aria-label="Toggle password visibility">
+
+                            <svg class="eye-off" width="20" height="20" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18"/>
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                                      d="M10.58 10.58a2 2 0 002.83 2.83"/>
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M9.88 5.09A10.94 10.94 0 0112 5c4.97 0 9.02 3.25 10.5 7a11.67 11.67 0 01-3.01 4.42"/>
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M6.61 6.61A11.66 11.66 0 001.5 12c1.48 3.75 5.53 7 10.5 7 1.6 0 3.1-.34 4.42-.94"/>
                             </svg>
-                            <svg class="w-5 h-5 eye-on hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+
+                            <svg class="eye-on hidden" width="20" height="20" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                      d="M2.25 12s3.5-6 9.75-6 9.75 6 9.75 6-3.5 6-9.75 6S2.25 12 2.25 12z"/>
+                                <circle cx="12" cy="12" r="2.5"/>
                             </svg>
                         </button>
                     </div>
                 </div>
 
-                {{-- KONFIRMASI PASSWORD + EYE --}}
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">
-                        Konfirmasi Password
-                    </label>
+                {{-- KONFIRMASI PASSWORD --}}
+                <div class="auth-field">
+                    <label class="auth-label">Konfirmasi Password</label>
 
-                    <div class="relative">
-                        <input type="password" id="password_confirmation" name="password_confirmation" required minlength="8"
-                               class="w-full px-4 pr-12 py-3 rounded-xl border border-slate-200
-                                      focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                    <div class="auth-password">
+                        <input type="password"
+                               id="password_confirmation"
+                               name="password_confirmation"
+                               required
+                               minlength="8"
+                               autocomplete="new-password"
+                               class="auth-input"
                                placeholder="Ulangi password">
 
                         <button type="button"
                                 onclick="togglePassword('password_confirmation', this)"
+                                class="auth-eye"
                                 tabindex="-1"
-                                aria-label="Toggle password visibility"
-                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-purple-600 transition">
-                            <svg class="w-5 h-5 eye-off" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                aria-label="Toggle password visibility">
+
+                            <svg class="eye-off" width="20" height="20" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18"/>
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                                      d="M10.58 10.58a2 2 0 002.83 2.83"/>
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M9.88 5.09A10.94 10.94 0 0112 5c4.97 0 9.02 3.25 10.5 7a11.67 11.67 0 01-3.01 4.42"/>
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M6.61 6.61A11.66 11.66 0 001.5 12c1.48 3.75 5.53 7 10.5 7 1.6 0 3.1-.34 4.42-.94"/>
                             </svg>
-                            <svg class="w-5 h-5 eye-on hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+
+                            <svg class="eye-on hidden" width="20" height="20" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                      d="M2.25 12s3.5-6 9.75-6 9.75 6 9.75 6-3.5 6-9.75 6S2.25 12 2.25 12z"/>
+                                <circle cx="12" cy="12" r="2.5"/>
                             </svg>
                         </button>
                     </div>
                 </div>
 
                 {{-- SUBMIT --}}
-                <button type="submit"
-                        class="w-full py-3.5 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition">
-                    Daftar
+                <button type="submit" class="auth-button">
+                    <span>Buat Akun</span>
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+                         stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                              d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+                    </svg>
                 </button>
-
             </form>
 
-            {{-- LINK LOGIN --}}
-            <div class="mt-6 pt-6 border-t border-slate-100 text-center">
-                <p class="text-sm text-slate-500">
+
+            {{-- LOGIN LINK --}}
+            <div class="auth-register">
+                <p>
                     Sudah punya akun?
-                    <a href="{{ route('login') }}" class="font-semibold text-purple-600 hover:text-purple-700">
-                        Masuk di sini
-                    </a>
+                    <a href="{{ route('login') }}">Masuk di sini</a>
                 </p>
             </div>
 
+        </div>
+
+        {{-- FOOTER --}}
+        <div class="auth-footer">
+            SIKAT · Sistem Informasi Kehadiran Terintegritas
         </div>
 
     </div>
 </div>
 
 
-{{-- SCRIPT EYE TOGGLE --}}
+{{-- PASSWORD TOGGLE --}}
 <script>
     function togglePassword(inputId, button) {
         const input  = document.getElementById(inputId);

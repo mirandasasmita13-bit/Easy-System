@@ -15,10 +15,7 @@ class PengajuanController extends Controller
         // Tab aktif (default: lembur)
         $tab = $request->get('tab', 'lembur');
 
-        // =========================================================
         // COUNT untuk badge & summary
-        // =========================================================
-
         $countLembur    = Lembur::where('status_approval', 'pending')->count();
         $countLupaAbsen = Pengajuanlupaabsen::where('status', 'pending')->count();
         $countSurat     = PengajuanSurat::count();
@@ -35,14 +32,14 @@ class PengajuanController extends Controller
         $perluReset    = false;
         $tahunSekarang = now()->year;
 
-        // TAB: LEMBURcoba jell
+        // TAB: LEMBUR
         if ($tab === 'lembur') {
-            $pending = Lembur::with('user')
+            $pending = Lembur::with('user')  // ← TAMBAH 'approver'
                 ->where('status_approval', 'pending')
                 ->latest('tanggal')
                 ->get();
 
-            $riwayat = Lembur::with('user', 'approver')
+            $riwayat = Lembur::with('user', 'approver') 
                 ->whereIn('status_approval', ['approved', 'rejected'])
                 ->latest('approved_at')
                 ->limit(50)
@@ -51,7 +48,7 @@ class PengajuanController extends Controller
 
         // TAB: LUPA ABSEN
         if ($tab === 'lupa-absen') {
-            $pending = Pengajuanlupaabsen::with('user', 'absensi')
+            $pending = Pengajuanlupaabsen::with('user', 'absensi')  // ← TAMBAH 'approver'
                 ->where('status', 'pending')
                 ->latest('tanggal')
                 ->get();

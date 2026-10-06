@@ -12,11 +12,8 @@ use Illuminate\Support\Facades\Schema;
 
 class PengajuanlupaabsenController extends Controller
 {
-    /**
-     * =========================================================
-     * INDEX — PPNPN lihat riwayat sendiri, Admin lihat semua
-     * =========================================================
-     */
+    
+// INDEX — PPNPN lihat riwayat sendiri, Admin lihat semua
     public function index()
     {
         $user = Auth::user();
@@ -33,27 +30,25 @@ class PengajuanlupaabsenController extends Controller
         }
 
         $riwayatLupaAbsen = $query->get();
-
         return view('lupa_absen.index', compact('riwayatLupaAbsen'));
     }
 
-    /**
-     * =========================================================
-     * STORE — Simpan pengajuan baru
-     * =========================================================
-     */
+    // STORE — Simpan pengajuan baru
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'tanggal'     => 'required|date|before_or_equal:today',
+            'tanggal' => 'required|date|after_or_equal:' . now()->subDays(3)->toDateString() . '|before_or_equal:today',
             'jenis_absen' => 'required|in:masuk,pulang',
             'jam'         => 'required',
             'alasan'      => 'required|string|max:1000',
-            'bukti'       => 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:5120',
+            'bukti'       => 'required|file|mimes:pdf,jpg,jpeg,png,webp|max:5120',
         ], [
             'tanggal.before_or_equal' => 'Tanggal tidak boleh melebihi hari ini.',
+            'tanggal.after_or_equal'  => 'Tanggal tidak boleh lebih mundur dari 3 hari yang lalu.',
             'jenis_absen.in'          => 'Jenis absensi harus masuk atau pulang.',
+            'bukti.required'          => 'Bukti wajib diunggah.',
             'bukti.max'               => 'Ukuran bukti maksimal 5 MB.',
+            'bukti.mimes'             => 'Format bukti harus PDF, JPG, JPEG, PNG, atau WEBP.',
         ]);
 
         DB::beginTransaction();
@@ -67,32 +62,26 @@ class PengajuanlupaabsenController extends Controller
                 'status'      => 'pending',
             ];
 
-            // Upload bukti kalau ada
-            if ($request->hasFile('bukti')) {
+        // Upload bukti (wajib)
                 $data['bukti'] = $request->file('bukti')
                     ->store('bukti-lupa-absen', 'public');
+
+                Pengajuanlupaabsen::create($data);
+
+                DB::commit();
+
+                return redirect()->route('lupa-absen.index')
+                    ->with('success', 'Pengajuan perbaikan absensi berhasil dikirim.');
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Gagal store lupa absen: ' . $e->getMessage());
+                return back()->withInput()->with('error', 'Gagal mengirim pengajuan: ' . $e->getMessage());
             }
-
-            Pengajuanlupaabsen::create($data);
-
-            DB::commit();
-
-            return redirect()->route('lupa-absen.index')
-                ->with('success', 'Pengajuan perbaikan absensi berhasil dikirim.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Gagal store lupa absen: ' . $e->getMessage());
-            return back()->withInput()->with('error', 'Gagal mengirim pengajuan: ' . $e->getMessage());
         }
-    }
 
-    /**
-     * =========================================================
-     * APPROVE — FIX UTAMA 🔥
-     * Sinkronisasi: pengajuanlupaabsen → absensi
-     * =========================================================
-     */
+// APPROVE — FIX UTAMA 🔥
+// Sinkronisasi: pengajuanlupaabsen → absensi
     public function approve(Request $request, Pengajuanlupaabsen $lupaAbsen)
     {
         DB::beginTransaction();
@@ -107,6 +96,8 @@ class PengajuanlupaabsenController extends Controller
             // ---------------------------------------------
             $updateData = [
                 'status' => 'approved',
+                'approved_by' => Auth::id(),
+                'approved_at' => now(),
             ];
 
             if (Schema::hasColumn('pengajuanlupaabsen', 'catatan_admin')) {
@@ -183,11 +174,7 @@ class PengajuanlupaabsenController extends Controller
         }
     }
 
-    /**
-     * =========================================================
-     * REJECT
-     * =========================================================
-     */
+    // REJECT     
     public function reject(Request $request, Pengajuanlupaabsen $lupaAbsen)
     {
         DB::beginTransaction();
@@ -201,6 +188,8 @@ class PengajuanlupaabsenController extends Controller
             // ---------------------------------------------
             $updateData = [
                 'status' => 'rejected',
+                'approved_by' => Auth::id(),
+                'approved_at' => now(),
             ];
 
             if (Schema::hasColumn('pengajuanlupaabsen', 'catatan_admin')) {

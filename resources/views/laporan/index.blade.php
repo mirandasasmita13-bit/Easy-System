@@ -6,9 +6,10 @@
 
 {{-- HEADER --}}
 <div class="mb-5">
-    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+    <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
         Laporan
     </h2>
+    
     <p class="mt-1 text-sm text-slate-500">
         Pantau aktivitas administrasi PPNPN.
     </p>

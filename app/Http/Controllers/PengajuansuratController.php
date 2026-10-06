@@ -25,7 +25,6 @@ class PengajuansuratController extends Controller
         );
     }
 
-
     /**
      * Simpan pengajuan surat (baru)
      */
@@ -33,6 +32,9 @@ class PengajuansuratController extends Controller
     {
         $user = auth()->user();
 
+        // =====================================================
+        // VALIDASI
+        // =====================================================
         $request->validate([
             'jenis_surat' => [
                 'required',
@@ -51,25 +53,40 @@ class PengajuansuratController extends Controller
             ],
 
             'dokumen' => [
-                'nullable',
+                'required',
                 'file',
                 'mimes:pdf,jpg,jpeg,png',
                 'max:5120',
             ],
+        ], [
+            'dokumen.required' => 'Dokumen wajib diupload.',
+            'dokumen.mimes'    => 'Format dokumen harus PDF, JPG, JPEG, atau PNG.',
+            'dokumen.max'      => 'Ukuran dokumen maksimal 5 MB.',
         ]);
 
+        // =====================================================
+        // CEK DUPLIKAT (cegah double submit dari backend)
+        // =====================================================
+        $duplikat = PengajuanSurat::where('user_id', $user->id)
+            ->where('jenis_surat', $request->jenis_surat)
+            ->where('tanggal', $request->tanggal)
+            ->where('keperluan', $request->keperluan)
+            ->where('created_at', '>=', now()->subSeconds(10))
+            ->exists();
 
-        /*
-        |--------------------------------------------------------------------------
-        | SIMPAN DOKUMEN
-        |--------------------------------------------------------------------------
-        */
+        if ($duplikat) {
+            return back()
+                ->withInput()
+                ->with('error', 'Surat ini baru saja kamu simpan. Mohon tunggu sebentar sebelum input lagi.');
+        }
 
+        // =====================================================
+        // SIMPAN DOKUMEN
+        // =====================================================
         $dokumenPath = null;
         $namaDokumen = null;
 
         if ($request->hasFile('dokumen')) {
-
             $file = $request->file('dokumen');
 
             // Simpan file ke: storage/app/public/dokumen-surat
@@ -79,13 +96,9 @@ class PengajuansuratController extends Controller
             $namaDokumen = $file->getClientOriginalName();
         }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | SIMPAN DATA KE DATABASE
-        |--------------------------------------------------------------------------
-        */
-
+        // =====================================================
+        // SIMPAN DATA KE DATABASE
+        // =====================================================
         PengajuanSurat::create([
             'user_id'      => $user->id,
             'jenis_surat'  => $request->jenis_surat,
@@ -94,7 +107,6 @@ class PengajuansuratController extends Controller
             'dokumen'      => $dokumenPath,
             'nama_dokumen' => $namaDokumen,
         ]);
-
 
         return back()->with(
             'success',
@@ -105,14 +117,6 @@ class PengajuansuratController extends Controller
 
     /**
      * Update pengajuan surat (perbaikan).
-     *
-     * PPNPN bisa memperbaiki:
-     * - Jenis surat (kalau salah pilih)
-     * - Tanggal (kalau salah input)
-     * - Keperluan (kalau salah ketik)
-     * - Dokumen (kalau salah upload)
-     *
-     * Kalau dokumen baru di-upload, file lama dihapus.
      */
     public function update(Request $request, PengajuanSurat $pengajuanSurat)
     {
@@ -167,7 +171,6 @@ class PengajuansuratController extends Controller
         }
 
         $pengajuanSurat->update($data);
-
 
         return back()->with(
             'success',

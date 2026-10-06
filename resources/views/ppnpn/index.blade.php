@@ -1,6 +1,6 @@
 @extends('layouts.utama')
 
-@section('title', 'Data PPNPN')
+@section('title', 'Data Pengguna')
 
 @section('content')
 
@@ -8,14 +8,14 @@
 
     {{-- HEADER --}}
     <div>
-        <h1 class="text-2xl font-bold text-gray-800">
-            Data PPNPN
-        </h1>
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900"> 
+            Data Pengguna 
+        </h2>
+
         <p class="mt-1 text-sm text-gray-500">
-            Daftar PPNPN yang terdaftar dalam sistem Easy System.
+            Kelola data PPNPN & Magang/PKL yang terdaftar di sistem.
         </p>
     </div>
-
 
     {{-- PESAN --}}
     @if(session('success'))
@@ -38,7 +38,9 @@
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500">PPNPN Aktif</p>
+                    <p class="text-sm text-gray-500">
+                        {{ $role === 'magang' ? 'Magang Aktif' : 'PPNPN Aktif' }}
+                    </p>
                     <p class="mt-1 text-3xl font-bold text-emerald-600">{{ $countAktif }}</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl font-bold">
@@ -51,7 +53,9 @@
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500">PPNPN Nonaktif</p>
+                    <p class="text-sm text-gray-500">
+                        {{ $role === 'magang' ? 'Magang Nonaktif' : 'PPNPN Nonaktif' }}
+                    </p>
                     <p class="mt-1 text-3xl font-bold text-slate-500">{{ $countNonaktif }}</p>
                 </div>
                 <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 text-xl font-bold">
@@ -64,7 +68,9 @@
         <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500">Total PPNPN</p>
+                    <p class="text-sm text-gray-500">
+                        Total {{ $role === 'magang' ? 'Magang' : 'PPNPN' }}
+                    </p>
                     <p class="mt-1 text-3xl font-bold text-purple-600">{{ $countSemua }}</p>
                     <p class="text-xs text-gray-400 mt-1">Aktif + Nonaktif</p>
                 </div>
@@ -77,73 +83,108 @@
     </div>
 
 
-    {{-- DAFTAR PPNPN --}}
+    {{-- DAFTAR PENGGUNA --}}
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
 
-        {{-- HEADER TABEL --}}
+        {{-- HEADER TABEL + TAB ROLE --}}
         <div class="px-6 py-5 border-b border-gray-100">
 
-            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            {{-- BARIS 1: Judul + Tab Role --}}
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
 
+                {{-- KIRI: Judul --}}
                 <div>
                     <h2 class="text-lg font-semibold text-gray-800">
-                        Daftar PPNPN
+                        Daftar {{ $role === 'magang' ? 'Magang / PKL' : 'PPNPN' }}
                     </h2>
                     <p class="mt-1 text-sm text-gray-500">
-                        Data pengguna dengan kategori PPNPN.
+                        Data pengguna dengan kategori {{ $role === 'magang' ? 'Magang / PKL' : 'PPNPN' }}.
                     </p>
                 </div>
 
-                {{-- SEARCH --}}
-                <div class="relative w-full lg:w-72">
+                {{-- KANAN: Tab Role --}}
+                <div class="flex items-center gap-2 shrink-0">
+                    <a href="{{ route('ppnpn.index', ['role' => 'ppnpn', 'filter' => $filter]) }}"
+                       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition
+                              {{ $role === 'ppnpn'
+                                  ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
+                                  : 'bg-white border border-slate-200 text-slate-500 hover:border-purple-200 hover:text-purple-600' }}">
+                        👷 PPNPN
+                        <span class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold
+                            {{ $role === 'ppnpn' ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-500' }}">
+                            {{ $countPpnpnSemua }}
+                        </span>
+                    </a>
+
+                    <a href="{{ route('ppnpn.index', ['role' => 'magang', 'filter' => $filter]) }}"
+                       class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition
+                              {{ $role === 'magang'
+                                  ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
+                                  : 'bg-white border border-slate-200 text-slate-500 hover:border-purple-200 hover:text-purple-600' }}">
+                        🎓 Magang / PKL
+                        <span class="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-bold
+                            {{ $role === 'magang' ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-500' }}">
+                            {{ $countMagangSemua }}
+                        </span>
+                    </a>
+                </div>
+
+            </div>
+
+            {{-- BARIS 2: Filter Status + Search (SEJAJAR) --}}
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+
+                {{-- KIRI: Filter Status --}}
+                <div class="flex flex-nowrap gap-2">
+                    <a href="{{ route('ppnpn.index', ['role' => $role, 'filter' => 'semua']) }}"
+                       class="whitespace-nowrap px-4 py-2 rounded-lg text-sm font-semibold transition
+                              {{ $filter === 'semua'
+                                  ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        Semua ({{ $countSemua }})
+                    </a>
+                    <a href="{{ route('ppnpn.index', ['role' => $role, 'filter' => 'aktif']) }}"
+                       class="whitespace-nowrap px-4 py-2 rounded-lg text-sm font-semibold transition
+                              {{ $filter === 'aktif'
+                                  ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        Aktif ({{ $countAktif }})
+                    </a>
+                    <a href="{{ route('ppnpn.index', ['role' => $role, 'filter' => 'nonaktif']) }}"
+                       class="whitespace-nowrap px-4 py-2 rounded-lg text-sm font-semibold transition
+                              {{ $filter === 'nonaktif'
+                                  ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
+                        Nonaktif ({{ $countNonaktif }})
+                    </a>
+                </div>
+
+                {{-- KANAN: Search (pendek) --}}
+                <div class="relative shrink-0" style="width: 100%; max-width: 260px;">
                     <input type="text" id="searchPpnpn"
-                           placeholder="Cari nama, username, atau NIK..."
-                           class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 pl-10 text-sm text-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 focus:outline-none">
+                        placeholder="Cari nama, username..."
+                        class="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 pl-10 text-sm text-gray-700 focus:border-purple-400 focus:ring-2 focus:ring-purple-100 focus:outline-none">
                     <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z" />
+                            d="m21 21-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z" />
                     </svg>
                 </div>
 
             </div>
 
-
-            {{-- FILTER TAB (3 TAB) --}}
-            <div class="mt-4 flex flex-wrap gap-2">
-                <a href="{{ route('ppnpn.index', ['filter' => 'semua']) }}"
-                   class="px-4 py-2 rounded-lg text-sm font-medium transition
-                          {{ $filter === 'semua'
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
-                    Semua ({{ $countSemua }})
-                </a>
-                <a href="{{ route('ppnpn.index', ['filter' => 'aktif']) }}"
-                   class="px-4 py-2 rounded-lg text-sm font-medium transition
-                          {{ $filter === 'aktif'
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
-                    Aktif ({{ $countAktif }})
-                </a>
-                <a href="{{ route('ppnpn.index', ['filter' => 'nonaktif']) }}"
-                   class="px-4 py-2 rounded-lg text-sm font-medium transition
-                          {{ $filter === 'nonaktif'
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}">
-                    Nonaktif ({{ $countNonaktif }})
-                </a>
-            </div>
-
         </div>
 
 
-        {{-- TABEL PPNPN --}}
+        {{-- TABEL PENGGUNA --}}
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-gray-50 border-b border-gray-100">
                     <tr class="text-left text-gray-500">
                         <th class="px-6 py-4 font-semibold w-16">No</th>
-                        <th class="px-6 py-4 font-semibold">PPNPN</th>
+                        <th class="px-6 py-4 font-semibold">
+                            {{ $role === 'magang' ? 'Magang / PKL' : 'PPNPN' }}
+                        </th>
                         <th class="px-6 py-4 font-semibold">NIK</th>
                         <th class="px-6 py-4 font-semibold">Username</th>
                         <th class="px-6 py-4 font-semibold text-center w-28">Status</th>
@@ -169,13 +210,17 @@
                                              alt="Foto {{ $item->name }}"
                                              class="w-10 h-10 rounded-full object-cover border border-gray-200">
                                     @else
-                                        <div class="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-semibold">
+                                        <div class="w-10 h-10 rounded-full
+                                                    {{ $item->role === 'magang' ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700' }}
+                                                    flex items-center justify-center font-semibold">
                                             {{ strtoupper(substr($item->name, 0, 1)) }}
                                         </div>
                                     @endif
                                     <div>
                                         <p class="font-semibold text-gray-800">{{ $item->name }}</p>
-                                        <p class="text-xs text-gray-400 mt-0.5">PPNPN</p>
+                                        <p class="text-xs text-gray-400 mt-0.5">
+                                            {{ $item->role === 'magang' ? 'Magang / PKL' : 'PPNPN' }}
+                                        </p>
                                     </div>
                                 </div>
                             </td>
@@ -213,7 +258,8 @@
                                                 @js($item->name),
                                                 @js($item->username ?? '-'),
                                                 @js($item->profil?->nik ?? '-'),
-                                                @js($item->profil?->foto ? asset('storage/' . $item->profil->foto) : null)
+                                                @js($item->profil?->foto ? asset('storage/' . $item->profil->foto) : null),
+                                                @js($item->role)
                                             )"
                                             class="inline-flex items-center justify-center px-3 py-2 rounded-lg bg-purple-50 text-purple-700 text-xs font-medium hover:bg-purple-100 transition">
                                         Lihat
@@ -253,8 +299,12 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                                               d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m4-8a4 4 0 11-8 0 4 4 0 018 0zm6 2a3 3 0 10-6 0" />
                                     </svg>
-                                    <p class="font-medium text-gray-500">Belum ada data PPNPN</p>
-                                    <p class="text-sm mt-1">PPNPN yang melakukan registrasi akan muncul di sini.</p>
+                                    <p class="font-medium text-gray-500">
+                                        Belum ada data {{ $role === 'magang' ? 'Magang / PKL' : 'PPNPN' }}
+                                    </p>
+                                    <p class="text-sm mt-1">
+                                        {{ $role === 'magang' ? 'Magang' : 'PPNPN' }} yang melakukan registrasi akan muncul di sini.
+                                    </p>
                                 </div>
                             </td>
                         </tr>
@@ -269,7 +319,7 @@
 
 
 {{-- =====================================================
-     MODAL DETAIL PPNPN
+     MODAL DETAIL PENGGUNA
 ===================================================== --}}
 <div id="ppnpnModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/40" onclick="closePpnpnModal()"></div>
@@ -277,7 +327,7 @@
         <div class="relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
             <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-800">Detail PPNPN</h3>
+                    <h3 class="text-lg font-semibold text-gray-800">Detail Pengguna</h3>
                     <p class="mt-1 text-sm text-gray-500">Informasi pengguna</p>
                 </div>
                 <button type="button" onclick="closePpnpnModal()"
@@ -289,14 +339,15 @@
             </div>
             <div class="px-6 py-6">
                 <div class="flex justify-center">
-                    <img id="modalPhoto" src="" alt="Foto PPNPN"
+                    <img id="modalPhoto" src="" alt="Foto Pengguna"
                          class="hidden w-24 h-24 rounded-full object-cover border border-gray-200">
                     <div id="modalInitial"
                          class="w-24 h-24 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-3xl font-semibold"></div>
                 </div>
                 <div class="text-center mt-4">
                     <h4 id="modalName" class="text-xl font-bold text-gray-800">-</h4>
-                    <span class="inline-flex mt-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold">
+                    <span id="modalRole"
+                          class="inline-flex mt-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold">
                         PPNPN
                     </span>
                 </div>
@@ -345,12 +396,21 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
-/* MODAL DETAIL PPNPN */
-function openPpnpnModal(name, username, nik, foto) {
+/* MODAL DETAIL PENGGUNA */
+function openPpnpnModal(name, username, nik, foto, role) {
     const modal = document.getElementById('ppnpnModal');
     document.getElementById('modalName').textContent = name;
     document.getElementById('modalEmail').textContent = username;
     document.getElementById('modalNik').textContent = nik;
+
+    const modalRole = document.getElementById('modalRole');
+    if (role === 'magang') {
+        modalRole.textContent = 'Magang / PKL';
+        modalRole.className = 'inline-flex mt-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold';
+    } else {
+        modalRole.textContent = 'PPNPN';
+        modalRole.className = 'inline-flex mt-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold';
+    }
 
     const modalPhoto = document.getElementById('modalPhoto');
     const modalInitial = document.getElementById('modalInitial');

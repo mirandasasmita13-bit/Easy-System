@@ -4,157 +4,145 @@
 
 @section('content')
 
-<div class="min-h-screen flex items-center justify-center">
-    <div class="w-full max-w-md">
+<div class="auth-container">
+    <div class="auth-wrapper">
 
-        {{-- HEADER --}}
-        <div class="text-center mb-8">
+        {{-- LOGO DI ATAS CARD --}}
+        <a href="{{ url('/') }}" class="auth-logo">
+            <img src="{{ asset('images/logoo.png') }}" alt="Logo SIKAT">
+        </a>
 
-            <div class="mx-auto w-14 h-14 rounded-2xl
-                        bg-purple-500
-                        flex items-center justify-center
-                        text-white text-2xl font-bold">
-                S
-            </div>
+        {{-- CARD --}}
+        <div class="auth-card">
 
-            <h1 class="mt-5 text-2xl font-extrabold text-slate-900">
-                SIKAT
-            </h1>
+            {{-- TITLE --}}
+            <h2 class="auth-welcome-title">
+                Selamat datang <span>kembali</span> 👋
+            </h2>
 
-            <p class="mt-1 text-slate-500">
-                Silakan masuk ke akun kamu.
+            <p class="auth-welcome-description">
+                Masuk ke akun SIKAT untuk melanjutkan.
             </p>
 
-        </div>
 
+            {{-- ALERT --}}
+            @if(session('success'))
+                <div class="auth-alert auth-alert-success">
+                    {{ session('success') }}
+                </div>
+            @endif
 
-        {{-- FORM CARD --}}
-        <div class="bg-white border border-slate-200
-                    rounded-2xl p-7 shadow-sm">
+            @if(session('error'))
+                <div class="auth-alert auth-alert-warning">
+                    {{ session('error') }}
+                </div>
+            @endif
 
-            {{-- ERROR --}}
             @if ($errors->any())
-                <div class="mb-5 rounded-xl bg-red-50
-                            border border-red-100 p-4">
-                    <p class="text-sm text-red-600">
-                        {{ $errors->first() }}
-                    </p>
+                <div class="auth-alert auth-alert-error">
+                    {{ $errors->first() }}
                 </div>
             @endif
 
 
-            <form method="POST" action="{{ url('/login') }}">
+            {{-- FORM --}}
+            <form method="POST" action="{{ url('/login') }}" class="auth-form">
                 @csrf
 
                 {{-- USERNAME --}}
-                <div class="mb-5">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">
-                        ID / Username
-                    </label>
-
-                    <input
-                        type="text"
-                        name="username"
-                        value="{{ old('username') }}"
-                        required
-                        autofocus
-                        class="w-full px-4 py-3 rounded-xl
-                            border border-slate-200
-                            focus:outline-none
-                            focus:ring-2
-                            focus:ring-purple-500/20
-                            focus:border-purple-500"
-                        placeholder="Masukkan ID / username"
-                    >
+                <div class="auth-field">
+                    <label class="auth-label">ID / Username</label>
+                    <input type="text"
+                           name="username"
+                           value="{{ old('username') }}"
+                           required
+                           autofocus
+                           autocomplete="username"
+                           class="auth-input"
+                           placeholder="Masukkan ID / username">
                 </div>
 
-                {{-- PASSWORD + EYE TOGGLE --}}
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-slate-700 mb-2">
-                        Password
-                    </label>
+                {{-- PASSWORD --}}
+                <div class="auth-field">
+                    <label class="auth-label">Password</label>
 
-                    <div class="relative">
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            required
-                            class="w-full px-4 pr-12 py-3 rounded-xl
-                                   border border-slate-200
-                                   focus:outline-none
-                                   focus:ring-2
-                                   focus:ring-purple-500/20
-                                   focus:border-purple-500"
-                            placeholder="Masukkan password"
-                        >
+                    <div class="auth-password">
+                        <input type="password"
+                               id="password"
+                               name="password"
+                               required
+                               autocomplete="current-password"
+                               class="auth-input"
+                               placeholder="Masukkan password">
 
-                        {{-- TOMBOL EYE --}}
-                        <button
-                            type="button"
-                            onclick="togglePassword()"
-                            class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-purple-600 transition"
-                            tabindex="-1"
-                            aria-label="Toggle password visibility"
-                        >
-                            {{-- EYE OFF (default) --}}
-                            <svg id="eye-off" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <button type="button"
+                                onclick="togglePassword()"
+                                class="auth-eye"
+                                tabindex="-1"
+                                aria-label="Tampilkan password">
+
+                            <svg id="eye-off" width="20" height="20" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18"/>
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+                                      d="M10.58 10.58a2 2 0 002.83 2.83"/>
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M9.88 5.09A10.94 10.94 0 0112 5c4.97 0 9.02 3.25 10.5 7a11.67 11.67 0 01-3.01 4.42"/>
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                      d="M6.61 6.61A11.66 11.66 0 001.5 12c1.48 3.75 5.53 7 10.5 7 1.6 0 3.1-.34 4.42-.94"/>
                             </svg>
 
-                            {{-- EYE ON (disembunyikan) --}}
-                            <svg id="eye-on" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <svg id="eye-on" class="hidden" width="20" height="20" fill="none"
+                                 viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7">
                                 <path stroke-linecap="round" stroke-linejoin="round"
-                                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                      d="M2.25 12s3.5-6 9.75-6 9.75 6 9.75 6-3.5 6-9.75 6S2.25 12 2.25 12z"/>
+                                <circle cx="12" cy="12" r="2.5"/>
                             </svg>
                         </button>
                     </div>
                 </div>
 
                 {{-- SUBMIT --}}
-                <button
-                    type="submit"
-                    class="w-full py-3.5 rounded-xl
-                           bg-purple-600 text-white
-                           font-semibold
-                           hover:bg-purple-700
-                           transition">
-                    Masuk
+                <button type="submit" class="auth-button">
+                    <span>Masuk ke SIKAT</span>
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24"
+                         stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 6l6 6-6 6"/>
+                    </svg>
                 </button>
-
             </form>
 
 
             {{-- REGISTER --}}
-            <div class="mt-6 pt-6 border-t border-slate-100 text-center">
-                <p class="text-sm text-slate-500">
-                    Belum punya akun?
-                    <a href="{{ route('register') }}"
-                       class="font-semibold text-purple-600 hover:text-purple-700 transition">
-                        Daftar di sini
-                    </a>
-                </p>
+            <div class="auth-register">
+                @if(\App\Models\User::pendaftaranDibuka())
+                    <p>
+                        Belum punya akun?
+                        <a href="{{ route('register') }}">Daftar di sini</a>
+                    </p>
+                @else
+                    <p>Untuk pendaftaran akun silahkan hubungi admin</p>
+                @endif
             </div>
 
         </div>
 
-
-        <p class="text-center text-xs text-slate-400 mt-6">
+        {{-- FOOTER --}}
+        <div class="auth-footer">
             SIKAT · Sistem Informasi Kehadiran Terintegritas
-        </p>
+        </div>
 
     </div>
 </div>
 
 
-{{-- SCRIPT EYE TOGGLE --}}
+{{-- PASSWORD TOGGLE --}}
 <script>
     function togglePassword() {
-        const input   = document.getElementById('password');
-        const eyeOff  = document.getElementById('eye-off');
-        const eyeOn   = document.getElementById('eye-on');
+        const input  = document.getElementById('password');
+        const eyeOff = document.getElementById('eye-off');
+        const eyeOn  = document.getElementById('eye-on');
 
         if (input.type === 'password') {
             input.type = 'text';

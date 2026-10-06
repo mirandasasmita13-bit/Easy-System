@@ -15,26 +15,29 @@
 </div>
 
 {{-- FLASH --}}
-@if(session('success'))
-    <div class="mb-5 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-        ✅ {{ session('success') }}
-    </div>
-@endif
+    @if(session('success'))
+        <div class="mb-5 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            ✅ {{ session('success') }}
+        </div>
+    @endif
 
-@php
-    $roleLabel = match($user->role) {
-        'admin'   => '🛡️ Administrator',
-        'pegawai' => '🧑‍💼 Pegawai',
-        'ppnpn'   => '👷 PPNPN',
-        default   => ucfirst($user->role),
-    };
-    $badgeClass = match($user->role) {
-        'admin'   => 'bg-purple-100 text-purple-700',
-        'pegawai' => 'bg-emerald-100 text-emerald-700',
-        'ppnpn'   => 'bg-sky-100 text-sky-700',
-        default   => 'bg-slate-100 text-slate-600',
-    };
-@endphp
+    @php
+        $roleLabel = match($user->role) {
+            'admin'   => '🛡️ Administrator',
+            'pegawai' => '🧑‍💼 Pegawai',
+            'ppnpn'   => '👷 PPNPN',
+            'magang'  => '🎓 Magang / PKL',
+            default   => ucfirst($user->role),
+        };
+        
+        $badgeClass = match($user->role) {
+            'admin'   => 'bg-purple-100 text-purple-700',
+            'pegawai' => 'bg-emerald-100 text-emerald-700',
+            'ppnpn'   => 'bg-sky-100 text-sky-700',
+            'magang'  => 'bg-amber-100 text-amber-700',
+            default   => 'bg-slate-100 text-slate-600',
+        };
+    @endphp
 
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
@@ -67,6 +70,7 @@
             <input type="hidden" name="nik" value="{{ $profil?->nik }}">
             <input type="hidden" name="jabatan" value="{{ $profil?->jabatan }}">
             <input type="hidden" name="unit_kerja" value="{{ $profil?->unit_kerja }}">
+
         @elseif($user->role === 'pegawai')
             <input type="hidden" name="nip" value="{{ $profil?->nip }}">
             <input type="hidden" name="pangkat_gol" value="{{ $profil?->pangkat_gol }}">
@@ -319,6 +323,99 @@
     </div>
 
 </div>
+
+
+{{-- =====================================================
+     PENGATURAN SISTEM (KHUSUS ADMIN)
+====================================================== --}}
+@if(auth()->user()->role === 'admin')
+    <div class="mt-6 bg-white p-6 sm:p-7 rounded-2xl border border-slate-100 shadow-sm">
+
+        <div class="flex items-start gap-4 mb-6">
+            <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                     stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-slate-900">Pengaturan Sistem</h3>
+                <p class="text-sm text-slate-400 mt-1">Konfigurasi aplikasi SIKAT.</p>
+            </div>
+        </div>
+
+        {{-- TOGGLE PENDAFTARAN --}}
+        <div class="rounded-2xl border border-slate-100 bg-slate-50/50 p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl
+                                {{ \App\Models\User::pendaftaranDibuka() ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500' }}
+                                flex items-center justify-center shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                             stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                  d="M18 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM3 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 019.374 21c-2.331 0-4.512-.645-6.374-1.766z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-slate-800">Pendaftaran Akun</p>
+                        <p class="text-sm text-slate-500 mt-0.5">
+                            Buka/tutup pendaftaran akun PPNPN & Magang.
+                        </p>
+                    </div>
+                </div>
+
+                <form action="{{ route('admin.toggle-pendaftaran') }}" method="POST" class="shrink-0">
+                @csrf
+                @if(\App\Models\User::pendaftaranDibuka())
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 border-2 border-red-700 transition shadow-md"
+                            style="background-color: #dc2626 !important; color: #ffffff !important;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9"/>
+                        </svg>
+                        Tutup Pendaftaran
+                    </button>
+                @else
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 border-2 border-emerald-700 transition shadow-md"
+                            style="background-color: #059669 !important; color: #ffffff !important;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5.636 5.636a9 9 0 1012.728 0M12 3v9"/>
+                        </svg>
+                        Buka Pendaftaran
+                    </button>
+                @endif
+            </form>
+
+            </div>
+
+            {{-- STATUS INFO --}}
+            <div class="mt-4 flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full
+                    {{ \App\Models\User::pendaftaranDibuka() ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400' }}"></span>
+                <p class="text-xs text-slate-500">
+                    Status saat ini:
+                    <strong class="{{ \App\Models\User::pendaftaranDibuka() ? 'text-emerald-600' : 'text-slate-600' }}">
+                        {{ \App\Models\User::pendaftaranDibuka() ? 'DIBUKA' : 'DITUTUP' }}
+                    </strong>
+                    @if(\App\Models\User::pendaftaranDibuka())
+                        — siapa saja bisa mendaftar di halaman register.
+                    @else
+                        — halaman register tidak dapat diakses publik.
+                    @endif
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+@endif
 
 @endsection
 

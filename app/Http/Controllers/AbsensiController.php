@@ -76,13 +76,11 @@ class AbsensiController extends Controller
             'latitude'   => ['required', 'numeric', 'between:-90,90'],
             'longitude'  => ['required', 'numeric', 'between:-180,180'],
             'foto_masuk' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'is_jaga_pos' => ['nullable', 'boolean'],
         ]);
 
-        // =====================================================
-        // CEK: sudah absen shift yang SAMA di hari ini?
-        // =====================================================
-        // Tidak ada cek "absen menggantung" — user bebas absen masuk.
-        // =====================================================
+    
+        // Absensi tidak ada yang meggantung
         $sudahAbsenShift = Absensi::where('user_id', $user->id)
             ->whereDate('tanggal', today())
             ->where('shift', $request->shift)
@@ -114,14 +112,10 @@ class AbsensiController extends Controller
             );
         }
 
-        // =====================================================
         // SIMPAN FOTO
-        // =====================================================
         $foto = $request->file('foto_masuk')->store('absensi', 'public');
 
-        // =====================================================
         // SIMPAN ABSENSI
-        // =====================================================
         Absensi::create([
             'user_id'         => $user->id,
             'tanggal'         => today(),
@@ -129,6 +123,7 @@ class AbsensiController extends Controller
             'jam_masuk'       => now()->format('H:i:s'),
             'keterangan'      => 'H',
             'status_approval' => 'normal',
+            'is_jaga_pos'     => $request->boolean('is_jaga_pos'),
             'latitude'        => $request->latitude,
             'longitude'       => $request->longitude,
             'jarak'           => round($jarak, 2),

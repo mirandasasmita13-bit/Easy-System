@@ -202,41 +202,48 @@ class RekapabsensiController extends Controller
     }
 
 
-    /* =========================================================
-       REKAP ABSENSI ADMIN
-       ========================================================= */
     public function index(Request $request)
-    {
-        $bulan = (int) ($request->bulan ?? now()->month);
-        $tahun = (int) ($request->tahun ?? now()->year);
+{
+    $bulan = (int) ($request->bulan ?? now()->month);
+    $tahun = (int) ($request->tahun ?? now()->year);
 
-        $tanggalAwal  = Carbon::create($tahun, $bulan, 1)->startOfMonth();
-        $tanggalAkhir = Carbon::create($tahun, $bulan, 1)->endOfMonth();
+    // ⬇️ TAMBAHAN: role aktif
+    $role = $request->get('role', 'ppnpn');
+    if (!in_array($role, ['ppnpn', 'magang'], true)) {
+        $role = 'ppnpn';
+    }
 
-        $tanggal = [];
-        $hari = $tanggalAwal->copy();
-        while ($hari->lte($tanggalAkhir)) {
-            $tanggal[] = $hari->copy();
-            $hari->addDay();
-        }
+    $tanggalAwal  = Carbon::create($tahun, $bulan, 1)->startOfMonth();
+    $tanggalAkhir = Carbon::create($tahun, $bulan, 1)->endOfMonth();
 
-        $ppnpn = User::where('role', 'ppnpn')
-            ->where('status', 'aktif')
-            ->orderBy('name')
-            ->get();
+    $tanggal = [];
+    $hari = $tanggalAwal->copy();
+    while ($hari->lte($tanggalAkhir)) {
+        $tanggal[] = $hari->copy();
+        $hari->addDay();
+    }
 
-        $absensiData = Absensi::whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'ppnpn')->where('status', 'aktif');
-            })
-            ->get();
+    // ⬇️ GANTI role jadi dinamis
+    $ppnpn = User::where('role', $role)
+        ->where('status', 'aktif')
+        ->orderBy('name')
+        ->get();
 
-        [$absensi, $absensiHadir] = $this->susunAbsensi($absensiData, true);
+    $absensiData = Absensi::whereBetween('tanggal', [
+            $tanggalAwal->format('Y-m-d'),
+            $tanggalAkhir->format('Y-m-d'),
+        ])
+        ->whereHas('user', function ($q) use ($role) {  // ⬅️ role dinamis
+            $q->where('role', $role)->where('status', 'aktif');
+        })
+        ->get();
 
-        // CUTI
+    [$absensi, $absensiHadir] = $this->susunAbsensi($absensiData, true);
+
+    // CUTI (cuma untuk PPNPN)
+    $cutiData = collect();
+    $cuti = [];
+    if ($role === 'ppnpn') {
         $cutiData = Pengajuancuti::whereDate('tanggal_mulai', '<=', $tanggalAkhir)
             ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
             ->whereHas('user', function ($q) {
@@ -244,7 +251,6 @@ class RekapabsensiController extends Controller
             })
             ->get();
 
-        $cuti = [];
         foreach ($cutiData as $item) {
             $mulai   = Carbon::parse($item->tanggal_mulai);
             $selesai = Carbon::parse($item->tanggal_selesai);
@@ -255,175 +261,194 @@ class RekapabsensiController extends Controller
                 $mulai->addDay();
             }
         }
-
-        // LUPA ABSEN
-        $lupaData = Pengajuanlupaabsen::whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'ppnpn')->where('status', 'aktif');
-            })
-            ->get();
-
-        $lupaAbsen = [];
-        foreach ($lupaData as $item) {
-            $lupaAbsen[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
-        }
-
-        // SURAT SAKIT
-        $sakitData = Pengajuansurat::whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'ppnpn')->where('status', 'aktif');
-            })
-            ->where(function ($q) {
-                $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
-                  ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
-                  ->orWhere(function ($sub) {
-                      $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
-                          ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
-                  });
-            })
-            ->get();
-
-        $suratSakit = [];
-        foreach ($sakitData as $item) {
-            $suratSakit[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
-        }
-
-        return view('rekapabsensi.index', compact(
-            'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
-            'ppnpn',
-            'absensi', 'absensiHadir',
-            'cuti', 'lupaAbsen', 'suratSakit'
-        ));
     }
+
+    // LUPA ABSEN
+    $lupaData = Pengajuanlupaabsen::whereBetween('tanggal', [
+            $tanggalAwal->format('Y-m-d'),
+            $tanggalAkhir->format('Y-m-d'),
+        ])
+        ->whereHas('user', function ($q) use ($role) {  // ⬅️ role dinamis
+            $q->where('role', $role)->where('status', 'aktif');
+        })
+        ->get();
+
+    $lupaAbsen = [];
+    foreach ($lupaData as $item) {
+        $lupaAbsen[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
+    }
+
+    // SURAT SAKIT
+    $sakitData = Pengajuansurat::whereBetween('tanggal', [
+            $tanggalAwal->format('Y-m-d'),
+            $tanggalAkhir->format('Y-m-d'),
+        ])
+        ->whereHas('user', function ($q) use ($role) {  // ⬅️ role dinamis
+            $q->where('role', $role)->where('status', 'aktif');
+        })
+        ->where(function ($q) {
+            $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
+              ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
+              ->orWhere(function ($sub) {
+                  $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
+                      ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
+              });
+        })
+        ->get();
+
+    $suratSakit = [];
+    foreach ($sakitData as $item) {
+        $suratSakit[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
+    }
+
+    // ⬇️ TAMBAHAN: counter untuk badge di tab
+    $countPpnpn = User::where('role', 'ppnpn')->where('status', 'aktif')->count();
+    $countMagang = User::where('role', 'magang')->where('status', 'aktif')->count();
+
+    return view('rekapabsensi.index', compact(
+        'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
+        'ppnpn', 'role',
+        'absensi', 'absensiHadir',
+        'cuti', 'lupaAbsen', 'suratSakit',
+        'countPpnpn', 'countMagang'  // ⬅️ untuk badge tab
+    ));
+}
 
 
     /* =========================================================
        EXPORT EXCEL ADMIN
        ========================================================= */
-    public function exportExcel(Request $request)
+        public function exportExcel(Request $request)
     {
         $bulan = (int) ($request->bulan ?? now()->month);
         $tahun = (int) ($request->tahun ?? now()->year);
 
+        // TAMBAHAN
+        $role = $request->get('role', 'ppnpn');
+        if (!in_array($role, ['ppnpn', 'magang'], true)) {
+            $role = 'ppnpn';
+        }
+
         return Excel::download(
-            new RekapabsensiExport($bulan, $tahun),
-            'rekap-absensi-' . $tahun . '-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '.xlsx'
+            new RekapabsensiExport($bulan, $tahun, $role),  // ⬅️ kirim role ke Export
+            'rekap-absensi-' . $role . '-' . $tahun . '-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '.xlsx'
         );
     }
-
 
     /* =========================================================
        EXPORT PDF ADMIN
        ========================================================= */
-    public function exportPdf(Request $request)
-    {
-        $bulan = (int) ($request->bulan ?? now()->month);
-        $tahun = (int) ($request->tahun ?? now()->year);
+            public function exportPdf(Request $request)
+        {
+            $bulan = (int) ($request->bulan ?? now()->month);
+            $tahun = (int) ($request->tahun ?? now()->year);
 
-        $tanggalAwal  = Carbon::create($tahun, $bulan, 1)->startOfMonth();
-        $tanggalAkhir = Carbon::create($tahun, $bulan, 1)->endOfMonth();
-
-        $tanggal = [];
-        $hari = $tanggalAwal->copy();
-        while ($hari->lte($tanggalAkhir)) {
-            $tanggal[] = $hari->copy();
-            $hari->addDay();
-        }
-
-        $ppnpn = User::where('role', 'ppnpn')
-            ->where('status', 'aktif')
-            ->orderBy('name')
-            ->get();
-
-        $absensiData = Absensi::whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'ppnpn')->where('status', 'aktif');
-            })
-            ->get();
-
-        [$absensi, $absensiHadir] = $this->susunAbsensi($absensiData, true);
-
-        // CUTI
-        $cutiData = Pengajuancuti::whereDate('tanggal_mulai', '<=', $tanggalAkhir)
-            ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'ppnpn')->where('status', 'aktif');
-            })
-            ->get();
-
-        $cuti = [];
-        foreach ($cutiData as $item) {
-            $mulai = Carbon::parse($item->tanggal_mulai);
-            $selesai = Carbon::parse($item->tanggal_selesai);
-            while ($mulai->lte($selesai)) {
-                if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
-                    $cuti[$item->user_id][$mulai->format('Y-m-d')] = $item;
-                }
-                $mulai->addDay();
+            // ⬇️ TAMBAHAN
+            $role = $request->get('role', 'ppnpn');
+            if (!in_array($role, ['ppnpn', 'magang'], true)) {
+                $role = 'ppnpn';
             }
+
+            $tanggalAwal  = Carbon::create($tahun, $bulan, 1)->startOfMonth();
+            $tanggalAkhir = Carbon::create($tahun, $bulan, 1)->endOfMonth();
+
+            $tanggal = [];
+            $hari = $tanggalAwal->copy();
+            while ($hari->lte($tanggalAkhir)) {
+                $tanggal[] = $hari->copy();
+                $hari->addDay();
+            }
+
+            // role dinamis
+            $ppnpn = User::where('role', $role)
+                ->where('status', 'aktif')
+                ->orderBy('name')
+                ->get();
+
+            $absensiData = Absensi::whereBetween('tanggal', [
+                    $tanggalAwal->format('Y-m-d'),
+                    $tanggalAkhir->format('Y-m-d'),
+                ])
+                ->whereHas('user', function ($q) use ($role) {
+                    $q->where('role', $role)->where('status', 'aktif');
+                })
+                ->get();
+
+            [$absensi, $absensiHadir] = $this->susunAbsensi($absensiData, true);
+
+            // CUTI (cuma PPNPN)
+            $cuti = [];
+            if ($role === 'ppnpn') {
+                $cutiData = Pengajuancuti::whereDate('tanggal_mulai', '<=', $tanggalAkhir)
+                    ->whereDate('tanggal_selesai', '>=', $tanggalAwal)
+                    ->whereHas('user', function ($q) {
+                        $q->where('role', 'ppnpn')->where('status', 'aktif');
+                    })
+                    ->get();
+
+                foreach ($cutiData as $item) {
+                    $mulai = Carbon::parse($item->tanggal_mulai);
+                    $selesai = Carbon::parse($item->tanggal_selesai);
+                    while ($mulai->lte($selesai)) {
+                        if (!$mulai->isWeekend() && $mulai->between($tanggalAwal, $tanggalAkhir)) {
+                            $cuti[$item->user_id][$mulai->format('Y-m-d')] = $item;
+                        }
+                        $mulai->addDay();
+                    }
+                }
+            }
+
+            // LUPA ABSEN
+            $lupaData = Pengajuanlupaabsen::whereBetween('tanggal', [
+                    $tanggalAwal->format('Y-m-d'),
+                    $tanggalAkhir->format('Y-m-d'),
+                ])
+                ->whereHas('user', function ($q) use ($role) {
+                    $q->where('role', $role)->where('status', 'aktif');
+                })
+                ->get();
+
+            $lupaAbsen = [];
+            foreach ($lupaData as $item) {
+                $lupaAbsen[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
+            }
+
+            // SURAT SAKIT
+            $sakitData = Pengajuansurat::whereBetween('tanggal', [
+                    $tanggalAwal->format('Y-m-d'),
+                    $tanggalAkhir->format('Y-m-d'),
+                ])
+                ->whereHas('user', function ($q) use ($role) {
+                    $q->where('role', $role)->where('status', 'aktif');
+                })
+                ->where(function ($q) {
+                    $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
+                    ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
+                    ->orWhere(function ($sub) {
+                        $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
+                            ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
+                    });
+                })
+                ->get();
+
+            $suratSakit = [];
+            foreach ($sakitData as $item) {
+                $suratSakit[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
+            }
+
+            $pdf = Pdf::loadView('rekapabsensi.pdf', compact(
+                'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
+                'ppnpn', 'role',
+                'absensi', 'absensiHadir',
+                'cuti', 'lupaAbsen', 'suratSakit'
+            ));
+
+            $pdf->setPaper('a4', 'landscape');
+
+            return $pdf->download(
+                'rekap-absensi-' . $role . '-' . $tahun . '-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '.pdf'
+            );
         }
-
-        // LUPA ABSEN
-        $lupaData = Pengajuanlupaabsen::whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'ppnpn')->where('status', 'aktif');
-            })
-            ->get();
-
-        $lupaAbsen = [];
-        foreach ($lupaData as $item) {
-            $lupaAbsen[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
-        }
-
-        // SURAT SAKIT
-        $sakitData = Pengajuansurat::whereBetween('tanggal', [
-                $tanggalAwal->format('Y-m-d'),
-                $tanggalAkhir->format('Y-m-d'),
-            ])
-            ->whereHas('user', function ($q) {
-                $q->where('role', 'ppnpn')->where('status', 'aktif');
-            })
-            ->where(function ($q) {
-                $q->whereRaw('LOWER(COALESCE(jenis_surat, "")) LIKE ?', ['%sakit%'])
-                  ->orWhereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%sakit%'])
-                  ->orWhere(function ($sub) {
-                      $sub->whereRaw('LOWER(COALESCE(jenis_surat, "")) = ?', ['surat_keterangan'])
-                          ->whereRaw('LOWER(COALESCE(keperluan, "")) LIKE ?', ['%berobat%']);
-                  });
-            })
-            ->get();
-
-        $suratSakit = [];
-        foreach ($sakitData as $item) {
-            $suratSakit[$item->user_id][Carbon::parse($item->tanggal)->format('Y-m-d')] = $item;
-        }
-
-        $pdf = Pdf::loadView('rekapabsensi.pdf', compact(
-            'bulan', 'tahun', 'tanggalAwal', 'tanggalAkhir', 'tanggal',
-            'ppnpn',
-            'absensi', 'absensiHadir',
-            'cuti', 'lupaAbsen', 'suratSakit'
-        ));
-
-        $pdf->setPaper('a4', 'landscape');
-
-        return $pdf->download(
-            'rekap-absensi-' . $tahun . '-' . str_pad($bulan, 2, '0', STR_PAD_LEFT) . '.pdf'
-        );
-    }
-
 
     /* =========================================================
        REKAP SAYA (individu)
