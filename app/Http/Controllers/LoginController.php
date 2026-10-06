@@ -15,7 +15,7 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        // POIN 1: Pakai username, bukan email
+        // Pakai username, bukan email
         $credentials = $request->validate([
             'username' => ['required', 'string'],
             'password' => ['required'],
@@ -42,7 +42,10 @@ class LoginController extends Controller
     }
 
 
+    // =========================================================
     // REGISTER
+    // =========================================================
+
     public function register()
     {
         // Cek dulu: pendaftaran dibuka atau tidak?
@@ -65,7 +68,7 @@ class LoginController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
 
-            // POIN 1: username, unique
+            // Username: unique & format
             'username' => [
                 'required',
                 'string',
@@ -80,15 +83,24 @@ class LoginController extends Controller
                 'confirmed',
             ],
 
-            // ROLE: cuma boleh ppnpn atau magang
-            'role' => ['required', 'in:ppnpn,magang'],
+            // role_sub: format "ppnpn", "ppnpn:satpam", "ppnpn:pramubakti", atau "magang"
+            'role_sub' => [
+                'required',
+                'in:ppnpn,ppnpn:satpam,ppnpn:pramubakti,magang',
+            ],
         ]);
+
+        // Pecah role_sub jadi role + sub_role
+        $roleSub = explode(':', $data['role_sub']);
+        $role    = $roleSub[0];              // ppnpn / magang
+        $subRole = $roleSub[1] ?? null;      // satpam / pramubakti / null
 
         User::create([
             'name'                   => $data['name'],
             'username'               => $data['username'],
             'password'               => $data['password'],
-            'role'                   => $data['role'],     // dari form
+            'role'                   => $role,
+            'sub_role'               => $subRole,
             'status'                 => 'aktif',
             'jatah_cuti_tahunan'     => 12,
             'cuti_tahunan_sebelumnya'=> 0,

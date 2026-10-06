@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'username',
     'password',
     'role',
+    'sub_role',
     'status',
     'tanggal_nonaktif',
     'pendaftaran_dibuka',
@@ -99,9 +100,6 @@ class User extends Authenticatable
 
     // --- CUTI ---
 
-    /**
-     * Cuti tahunan yang diinput admin (sebelum sistem berjalan).
-     */
     public function cutiManualDiTahun(): int
     {
         return $this->cutiSebelumnya()
@@ -110,9 +108,6 @@ class User extends Authenticatable
             ->sum('jumlah_hari');
     }
 
-    /**
-     * Cuti tahunan dari pengajuan PPNPN di sistem.
-     */
     public function cutiTahunanDiSistem(): int
     {
         return $this->pengajuancuti()
@@ -121,28 +116,56 @@ class User extends Authenticatable
             ->sum('jumlah_hari');
     }
 
-    /**
-     * Total cuti tahunan terpakai = manual + sistem.
-     */
     public function totalCutiTerpakai(): int
     {
         return $this->cutiManualDiTahun() + $this->cutiTahunanDiSistem();
     }
 
-    /**
-     * Sisa cuti tahunan.
-     */
     public function sisaCutiTahunan(): int
     {
         return max(0, $this->jatah_cuti_tahunan - $this->totalCutiTerpakai());
     }
 
-    
-    // PENGATURAN PENDAFTARAN
+
+    // --- ROLE HELPER ---
+
     /**
-     * Cek apakah pendaftaran sedang dibuka.
-     * Dicek dari user admin yang flag-nya true.
+     * Cek apakah user adalah satpam
      */
+    public function isSatpam(): bool
+    {
+        return $this->sub_role === 'satpam';
+    }
+
+    /**
+     * Cek apakah user adalah pramubakti
+     */
+    public function isPramubakti(): bool
+    {
+        return $this->sub_role === 'pramubakti';
+    }
+
+    /**
+     * Label role lengkap (buat ditampilin di UI)
+     */
+    public function labelRole(): string
+    {
+        if ($this->sub_role) {
+            return ucfirst($this->sub_role);
+        }
+
+        return match($this->role) {
+            'admin'    => 'Administrator',
+            'ppnpn'    => 'PPNPN',
+            'pegawai'  => 'Pegawai',
+            'magang'   => 'Magang / PKL',
+            default    => ucfirst($this->role),
+        };
+    }
+
+
+    // PENGATURAN PENDAFTARAN
+
     public static function pendaftaranDibuka(): bool
     {
         return static::where('role', 'admin')
@@ -150,10 +173,6 @@ class User extends Authenticatable
             ->exists();
     }
 
-    /**
-     * Buka/tutup pendaftaran.
-     * Return status baru (true = dibuka, false = ditutup).
-     */
     public static function togglePendaftaran(): bool
     {
         $current = static::pendaftaranDibuka();

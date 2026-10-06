@@ -144,27 +144,31 @@
                         </select>
                     </div>
 
-                    {{-- TAMBAHAN: Checkbox Jaga Pos --}}
+                {{-- CHECKBOX JAGA POS — CUMA BUAT SATPAM --}}
+                @if(auth()->user()->sub_role === 'satpam')
                     <div class="mt-4">
                         <label for="is_jaga_pos"
-                            class="flex items-start gap-3 p-4 rounded-xl border-2 border-slate-200 bg-slate-50 hover:bg-purple-50 hover:border-purple-300 cursor-pointer transition">
+                            class="flex items-start gap-3 p-4 rounded-xl border-2 border-purple-300 bg-purple-50 hover:bg-purple-100 cursor-pointer transition">
                             <input type="checkbox"
                                 id="is_jaga_pos"
                                 name="is_jaga_pos"
                                 value="1"
+                                required
                                 {{ old('is_jaga_pos') ? 'checked' : '' }}
-                                class="mt-0.5 w-5 h-5 rounded border-slate-300 text-purple-600 focus:ring-purple-500 focus:ring-2 cursor-pointer shrink-0">
+                                class="mt-0.5 w-5 h-5 rounded border-purple-300 text-purple-600 focus:ring-purple-500 focus:ring-2 cursor-pointer shrink-0">
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                                <p class="text-sm font-bold text-purple-900 flex items-center gap-1.5">
                                     <span>🛡️</span>
                                     <span>Saya jaga pos hari ini</span>
+                                    <span class="text-red-500 text-xs">*wajib</span>
                                 </p>
-                                <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                                    Centang jika Anda bertugas menjaga kantor/pos hari ini.
+                                <p class="text-xs text-purple-700 mt-1 leading-relaxed">
+                                    Sebagai satpam, kamu <strong>wajib</strong> mencentang ini sebelum absen masuk.
                                 </p>
                             </div>
                         </label>
                     </div>
+                @endif
 
                     <div class="mt-5 rounded-xl bg-slate-50 border border-slate-100 p-4">
                         <p class="text-xs uppercase tracking-wider font-semibold text-slate-400">Lokasi Kantor</p>

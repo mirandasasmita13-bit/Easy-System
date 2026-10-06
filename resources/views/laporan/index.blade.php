@@ -9,7 +9,7 @@
     <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900">
         Laporan
     </h2>
-    
+
     <p class="mt-1 text-sm text-slate-500">
         Pantau aktivitas administrasi PPNPN.
     </p>
@@ -48,7 +48,6 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-[1fr_110px_1fr_130px] gap-2">
 
-                    {{-- BULAN --}}
                     <select name="bulan"
                             class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
                         @for($i = 1; $i <= 12; $i++)
@@ -58,7 +57,6 @@
                         @endfor
                     </select>
 
-                    {{-- TAHUN --}}
                     <select name="tahun"
                             class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
                         @for($i = now()->year - 2; $i <= now()->year + 1; $i++)
@@ -68,7 +66,6 @@
                         @endfor
                     </select>
 
-                    {{-- PPNPN --}}
                     <select name="ppnpn"
                             class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
                         <option value="">Semua PPNPN</option>
@@ -79,7 +76,6 @@
                         @endforeach
                     </select>
 
-                    {{-- TOMBOL --}}
                     <button type="submit"
                             class="w-full inline-flex items-center justify-center rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-purple-200 transition hover:bg-purple-700">
                         Terapkan
@@ -112,7 +108,7 @@
             </span>
         </div>
 
-        {{-- TAB (URL-based, clean) --}}
+        {{-- TAB --}}
         <div class="flex flex-wrap gap-1.5 border-b border-slate-100 pb-3">
 
             <button type="button" data-tab="semua"
@@ -148,30 +144,34 @@
     {{-- TABLE --}}
     <div class="overflow-x-auto">
 
-        <table class="w-full min-w-[900px]">
+        <table class="w-full min-w-[1000px]">
 
+            {{-- HEADER UNGU SOFT ⬅️ --}}
             <thead>
-                <tr class="border-b border-slate-100">
-                    <th class="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <tr class="bg-gradient-to-r from-purple-50 via-purple-50/70 to-indigo-50 border-b border-purple-100">
+                    <th class="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-purple-700">
                         Tanggal
                     </th>
-                    <th class="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <th class="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-purple-700">
                         PPNPN
                     </th>
-                    <th class="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <th class="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-purple-700">
                         Aktivitas
                     </th>
-                    <th class="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <th class="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-purple-700">
                         Keterangan
                     </th>
-                    <th class="px-5 py-3 text-center text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    <th class="px-5 py-3.5 text-center text-[11px] font-bold uppercase tracking-wider text-purple-700">
                         Bukti
+                    </th>
+                    <th class="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-wider text-purple-700">
+                        Disetujui Oleh
                     </th>
                 </tr>
             </thead>
 
 
-            <tbody class="divide-y divide-slate-50">
+            <tbody class="divide-y divide-slate-100">
 
                 @forelse($semuaAktivitas as $aktivitas)
 
@@ -191,8 +191,10 @@
                         $labelAktivitas   = $aktivitas['aktivitas'] ?? '-';
                         $bukti            = $aktivitas['bukti'] ?? null;
                         $namaBukti        = $aktivitas['nama_bukti'] ?? 'Bukti';
+                        $approvedBy       = $aktivitas['approved_by'] ?? null;
+                        $approvedAt       = $aktivitas['approved_at'] ?? null;
+                        $status           = $aktivitas['status'] ?? null;
 
-                        // Warna badge aktivitas (hanya 4 kategori utama)
                         $labelLower = strtolower($labelAktivitas);
                         $badgeClass = match(true) {
                             str_contains($labelLower, 'cuti')   => 'bg-purple-50 text-purple-700',
@@ -203,7 +205,6 @@
                             default                              => 'bg-slate-100 text-slate-600',
                         };
 
-                        // Badge format file
                         $ext = $bukti ? strtolower(pathinfo($bukti, PATHINFO_EXTENSION)) : null;
                         $formatLabel = match($ext) {
                             'pdf'                              => 'PDF',
@@ -216,10 +217,10 @@
 
 
                     <tr data-category="{{ $kategori }}"
-                        class="laporan-row hover:bg-slate-50/60 transition">
+                        class="laporan-row hover:bg-purple-50/30 transition">
 
                         {{-- TANGGAL --}}
-                        <td class="px-5 py-3 text-sm text-slate-500 whitespace-nowrap">
+                        <td class="px-5 py-3.5 text-sm text-slate-600 whitespace-nowrap">
                             {{ $tanggalAktivitas
                                 ? \Carbon\Carbon::parse($tanggalAktivitas)->translatedFormat('d M Y')
                                 : '—' }}
@@ -227,9 +228,9 @@
 
 
                         {{-- PPNPN --}}
-                        <td class="px-5 py-3">
+                        <td class="px-5 py-3.5">
                             <div class="flex items-center gap-2.5">
-                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-[10px] font-bold text-purple-600">
+                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-100 to-indigo-100 text-[10px] font-bold text-purple-700">
                                     {{ collect(explode(' ', trim($namaPpnpn)))
                                         ->filter()
                                         ->map(fn($word) => strtoupper(substr($word, 0, 1)))
@@ -244,7 +245,7 @@
 
 
                         {{-- AKTIVITAS --}}
-                        <td class="px-5 py-3">
+                        <td class="px-5 py-3.5">
                             <span class="inline-flex items-center rounded-md px-2 py-1 text-[11px] font-semibold {{ $badgeClass }}">
                                 {{ $labelAktivitas }}
                             </span>
@@ -252,29 +253,26 @@
 
 
                         {{-- KETERANGAN --}}
-                        <td class="px-5 py-3 text-sm text-slate-500 max-w-[300px]">
+                        <td class="px-5 py-3.5 text-sm text-slate-500 max-w-[250px]">
                             <p class="truncate" title="{{ $keterangan }}">
                                 {{ $keterangan }}
                             </p>
                         </td>
 
 
-                        {{-- BUKTI (horizontal, compact) --}}
-                        <td class="px-5 py-3">
+                        {{-- BUKTI --}}
+                        <td class="px-5 py-3.5">
                             @if($bukti)
                                 <div class="flex items-center justify-center gap-2">
 
-                                    {{-- Badge format --}}
                                     <span class="inline-flex items-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 uppercase">
                                         {{ $formatLabel }}
                                     </span>
 
-                                    {{-- Nama file (compact) --}}
-                                    <span class="text-[11px] text-slate-400 max-w-[120px] truncate hidden md:inline" title="{{ $namaBukti }}">
+                                    <span class="text-[11px] text-slate-400 max-w-[100px] truncate hidden xl:inline" title="{{ $namaBukti }}">
                                         {{ $namaBukti }}
                                     </span>
 
-                                    {{-- Tombol Lihat --}}
                                     <button type="button"
                                             class="preview-bukti inline-flex items-center gap-1 rounded-md border border-purple-100 bg-purple-50 px-2 py-1 text-[11px] font-semibold text-purple-700 transition hover:bg-purple-100"
                                             data-bukti="{{ $bukti }}"
@@ -292,15 +290,58 @@
                             @endif
                         </td>
 
+
+                        {{-- DISETUJUI OLEH ⬅️ KOLOM BARU --}}
+                        <td class="px-5 py-3.5">
+                            @if($approvedBy)
+                                <div class="flex flex-col gap-1">
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 text-[10px] font-bold text-emerald-700">
+                                            {{ strtoupper(substr($approvedBy, 0, 1)) }}
+                                        </div>
+                                        <p class="text-sm font-semibold text-slate-700 truncate">
+                                            {{ $approvedBy }}
+                                        </p>
+                                    </div>
+
+                                    @if($approvedAt)
+                                        <p class="text-[11px] text-slate-400 pl-8">
+                                            {{ \Carbon\Carbon::parse($approvedAt)->translatedFormat('d M Y · H:i') }}
+                                        </p>
+                                    @endif
+
+                                    @if($status)
+                                        <div class="pl-8">
+                                            @if(in_array($status, ['approved', 'disetujui']))
+                                                <span class="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                                                    ✓ Disetujui
+                                                </span>
+                                            @elseif(in_array($status, ['rejected', 'ditolak']))
+                                                <span class="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600">
+                                                    ✕ Ditolak
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                                                    ⏳ Pending
+                                                </span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            @else
+                                <p class="text-xs text-slate-300 italic">—</p>
+                            @endif
+                        </td>
+
                     </tr>
 
                 @empty
 
                     <tr>
-                        <td colspan="5" class="px-5 py-16 text-center">
+                        <td colspan="6" class="px-5 py-16 text-center">
                             <div class="mx-auto flex max-w-sm flex-col items-center">
-                                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100">
-                                    <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50">
+                                    <svg class="h-5 w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>

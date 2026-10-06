@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <title>@yield('title', 'SIKAT')</title>
 
@@ -10,6 +10,124 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- =========================================================
+         LAYOUT LOCK — KUNCI TOTAL KE VIEWPORT
+    ========================================================== --}}
+    <style>
+        /* 1. Reset html & body — kunci, gak bisa scroll */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden !important;
+            overscroll-behavior: none;
+        }
+
+        /* 2. Body jadi fixed full-screen */
+        body {
+            position: fixed;
+            inset: 0;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* 3. Container utama — flex full height */
+        .app-shell {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        /* 4. Sidebar — DEFAULT HIDDEN, muncul di >= 1024px */
+        .app-sidebar {
+            display: none;
+            height: 100%;
+            flex-shrink: 0;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 5. Nav sidebar — cuma ini yang scroll internal */
+        .app-sidebar-nav {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .app-sidebar-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 6. Desktop: sidebar muncul */
+        @media (min-width: 1024px) {
+            .app-sidebar {
+                display: flex;
+            }
+        }
+
+        /* 7. Main content — cuma ini yang scroll internal */
+        .app-main {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+
+        /* 8. Scrollbar tipis buat main */
+        .app-main::-webkit-scrollbar {
+            width: 8px;
+        }
+        .app-main::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .app-main::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .app-main::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* 9. Mobile top bar — DEFAULT MUNCUL, hilang di >= 1024px */
+        .app-mobile-topbar {
+            display: flex;
+            position: fixed;
+        }
+
+        @media (min-width: 1024px) {
+            .app-mobile-topbar {
+                display: none;
+            }
+        }
+
+        /* 10. Mobile menu — di-toggle JS */
+        .app-mobile-menu {
+            position: fixed;
+        }
+
+        /* 11. Item menu mobile */
+        .mobile-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            color: white;
+            font-size: 0.875rem;
+            transition: 0.2s;
+        }
+        .mobile-menu-item:hover {
+            background: rgba(255,255,255,0.10);
+        }
+    </style>
 </head>
 
 @php
@@ -17,14 +135,15 @@
     $role = $user->role;
 @endphp
 
-<body class="bg-[#f7f7fb] text-gray-900 overflow-hidden">
-<div class="flex h-screen w-screen overflow-hidden">
+<body class="bg-[#f7f7fb] text-gray-900">
+
+<div class="app-shell">
 
     {{-- =========================================================
                         SIDEBAR DESKTOP
     ========================================================== --}}
 
-    <aside class="hidden lg:flex w-[280px] min-w-[280px] h-screen shrink-0 flex-col bg-[#21152f] text-white">
+    <aside class="app-sidebar w-[280px] min-w-[280px] bg-[#21152f] text-white">
 
         <!-- LOGO -->
         <div class="px-6 py-6 shrink-0">
@@ -42,7 +161,7 @@
                                 MENU DESKTOP
         ====================================================== --}}
 
-        <nav class="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-6 hide-scrollbar">
+        <nav class="app-sidebar-nav px-4 py-6">
 
             {{-- =================================================
                 ADMIN
@@ -56,9 +175,7 @@
 
                 <a href="{{ url('/dashboard') }}"
                    class="flex items-center gap-4 rounded-xl px-4 py-3 transition
-                          {{ request()->is('dashboard')
-                              ? 'bg-purple-500/20 text-white'
-                              : 'text-purple-100 hover:bg-white/5' }}">
+                          {{ request()->is('dashboard') ? 'bg-purple-500/20 text-white' : 'text-purple-100 hover:bg-white/5' }}">
                     <span class="text-sm {{ request()->is('dashboard') ? 'text-purple-300' : 'text-purple-400' }}">
                         {{ request()->is('dashboard') ? '●' : '○' }}
                     </span>
@@ -133,9 +250,8 @@
 
 
             {{-- =================================================
-                PPNPN
+                PPNPN / SATPAM / PRAMUBAKTI
             ================================================== --}}
-
             @elseif($role === 'ppnpn')
 
                 <p class="mb-3 px-4 text-[10px] uppercase tracking-[0.2em] text-purple-300">
@@ -313,17 +429,7 @@
                             {{ $user->name }}
                         </p>
                         <p class="mt-0.5 text-xs text-purple-300">
-                            @if($role === 'admin')
-                                Administrator
-                            @elseif($role === 'ppnpn')
-                                PPNPN
-                            @elseif($role === 'pegawai')
-                                Pegawai
-                            @elseif($role === 'magang')
-                                Magang / PKL
-                            @else
-                                {{ ucfirst($role) }}
-                            @endif
+                            {{ $user->labelRole() }}
                         </p>
                     </div>
 
@@ -346,7 +452,7 @@
         MOBILE TOP BAR
     ========================================================== --}}
 
-    <div class="fixed left-0 right-0 top-0 z-50 flex h-16 items-center justify-between bg-[#21152f] px-5 text-white shadow-lg lg:hidden">
+    <div class="app-mobile-topbar left-0 right-0 top-0 z-50 h-16 items-center justify-between bg-[#21152f] px-5 text-white shadow-lg">
 
         <a href="{{ url('/dashboard') }}" class="flex items-center">
             <img src="{{ asset('images/logo.png') }}"
@@ -368,7 +474,7 @@
     ========================================================== --}}
 
     <div id="mobileMenu"
-         class="fixed right-4 top-16 z-50 hidden w-64 rounded-2xl border border-white/10 bg-[#21152f] p-3 shadow-2xl lg:hidden">
+         class="app-mobile-menu right-4 top-16 z-50 hidden w-64 rounded-2xl border border-white/10 bg-[#21152f] p-3 shadow-2xl">
 
         @if($role === 'admin')
 
@@ -492,7 +598,7 @@
         KONTEN UTAMA
     ========================================================== --}}
 
-    <main class="min-w-0 flex-1 h-screen overflow-x-hidden overflow-y-auto p-5 pt-20 lg:p-8 lg:pt-8 xl:p-10 xl:pt-10">
+    <main class="app-main p-5 pt-20 lg:p-8 lg:pt-8 xl:p-10 xl:pt-10">
         @yield('content')
     </main>
 
@@ -517,29 +623,6 @@
         }
     });
 </script>
-
-
-{{-- =========================================================
-    STYLE MENU MOBILE
-========================================================== --}}
-
-<style>
-    .mobile-menu-item {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        border-radius: 0.75rem;
-        color: white;
-        font-size: 0.875rem;
-        transition: 0.2s;
-    }
-
-    .mobile-menu-item:hover {
-        background: rgba(255,255,255,0.10);
-    }
-</style>
-
 
 @stack('scripts')
 

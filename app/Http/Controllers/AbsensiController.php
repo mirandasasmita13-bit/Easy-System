@@ -64,9 +64,7 @@ class AbsensiController extends Controller
         ]);
     }
 
-    // ==========================================
-    // ABSEN MASUK
-    // ==========================================
+    // ===== ABSEN MASUK =====
     public function masuk(Request $request)
     {
         $user = auth()->user();
@@ -79,8 +77,15 @@ class AbsensiController extends Controller
             'is_jaga_pos' => ['nullable', 'boolean'],
         ]);
 
-    
-        // Absensi tidak ada yang meggantung
+        // ⬇️ TAMBAHAN: Satpam WAJIB ceklis jaga pos
+        if ($user->sub_role === 'satpam' && !$request->boolean('is_jaga_pos')) {
+            return back()
+                ->withInput()
+                ->with('error', 'Sebagai satpam, kamu WAJIB mencentang "Jaga Pos" sebelum absen masuk.');
+        }
+        // ⬆️
+
+        // Absensi tidak ada yang menggantung
         $sudahAbsenShift = Absensi::where('user_id', $user->id)
             ->whereDate('tanggal', today())
             ->where('shift', $request->shift)

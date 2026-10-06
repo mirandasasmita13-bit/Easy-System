@@ -70,18 +70,37 @@
                     </p>
                 </div>
 
-                {{-- ROLE --}}
+                {{-- ROLE + SUB ROLE --}}
                 <div class="auth-field">
                     <label class="auth-label">Daftar Sebagai</label>
-                    <select name="role" required class="auth-input">
+
+                    <select name="role_sub" required class="auth-input">
                         <option value="">— Pilih status —</option>
-                        <option value="ppnpn"  {{ old('role') === 'ppnpn'  ? 'selected' : '' }}>PPNPN</option>
-                        <option value="magang" {{ old('role') === 'magang' ? 'selected' : '' }}>Magang / PKL</option>
+
+                        <optgroup label="PPNPN">
+                            <option value="ppnpn:satpam"
+                                {{ old('role_sub') === 'ppnpn:satpam' ? 'selected' : '' }}>
+                                PPNPN — Satpam
+                            </option>
+                            <option value="ppnpn:pramubakti"
+                                {{ old('role_sub') === 'ppnpn:pramubakti' ? 'selected' : '' }}>
+                                PPNPN — Pramubakti
+                            </option>
+                        </optgroup>
+
+                        <optgroup label="Lainnya">
+                            <option value="magang"
+                                {{ old('role_sub') === 'magang' ? 'selected' : '' }}>
+                                Magang / PKL
+                            </option>
+                        </optgroup>
                     </select>
+
                     <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
-                        Pilih sesuai status kamu di instansi.
+                        Pilih sesuai jabatan yang sudah ditetapkan.
                     </p>
                 </div>
+
 
                 {{-- PASSWORD --}}
                 <div class="auth-field">
