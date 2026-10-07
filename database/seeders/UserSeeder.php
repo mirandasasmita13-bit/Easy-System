@@ -51,6 +51,20 @@ class UserSeeder extends Seeder
                 'tahun_cuti'              => now()->year,
             ]
         );
+        
+        // Aku super admin 
+        User::firstOrCreate(
+            ['username' => 'mrnda'], // pastikan username beda
+            [
+                'name'                    => 'Mirandaa Yeppo',
+                'password'                => Hash::make('kodokzumaa'), 
+                'role'                    => 'admin',
+                'status'                  => 'aktif',
+                'jatah_cuti_tahunan'      => 12,
+                'cuti_tahunan_sebelumnya' => 0,
+                'tahun_cuti'              => now()->year,
+            ]
+        );
 
         // 2. DUMMY USER — HANYA DI LOKAL
         if (app()->environment('local', 'testing')) {

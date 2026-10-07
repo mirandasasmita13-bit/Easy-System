@@ -83,14 +83,18 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
-                    {{-- TANGGAL --}}
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">Tanggal</label>
-                        <input type="date" name="tanggal" value="{{ old('tanggal') }}"
-                            min="{{ now()->subDays(3)->toDateString() }}"
-                            max="{{ now()->toDateString() }}" required
-                            class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
-                    </div>
+                    {{-- Tanggal --}}
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Tanggal</label>
+                            <input type="date" name="tanggal" value="{{ old('tanggal') }}"
+                                min="{{ \Carbon\Carbon::today()->subWeekdays(3)->toDateString() }}"
+                                max="{{ now()->toDateString() }}" required
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
+                        
+                                 <p class="text-xs text-slate-400 mt-1.5">
+                                    Berlaku untuk 3 hari kerja terakhir
+                                </p>
+                            </div>
 
                     {{-- JENIS ABSEN --}}
                     <div>
@@ -98,6 +102,7 @@
                         <select name="jenis_absen" required
                                 class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100">
                             <option value="">Pilih jenis absensi</option>
+                            
                             <option value="masuk"  {{ old('jenis_absen') === 'masuk'  ? 'selected' : '' }}>Absen Masuk</option>
                             <option value="pulang" {{ old('jenis_absen') === 'pulang' ? 'selected' : '' }}>Absen Pulang</option>
                         </select>

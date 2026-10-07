@@ -36,15 +36,17 @@ class PengajuanlupaabsenController extends Controller
     // STORE — Simpan pengajuan baru
     public function store(Request $request)
     {
+        $batasMundur = \Carbon\Carbon::today()->subWeekdays(3)->toDateString();
+
         $validated = $request->validate([
-            'tanggal' => 'required|date|after_or_equal:' . now()->subDays(3)->toDateString() . '|before_or_equal:today',
+            'tanggal' => 'required|date|after_or_equal:' . $batasMundur. '|before_or_equal:today',
             'jenis_absen' => 'required|in:masuk,pulang',
             'jam'         => 'required',
             'alasan'      => 'required|string|max:1000',
             'bukti'       => 'required|file|mimes:pdf,jpg,jpeg,png,webp|max:5120',
         ], [
             'tanggal.before_or_equal' => 'Tanggal tidak boleh melebihi hari ini.',
-            'tanggal.after_or_equal'  => 'Tanggal tidak boleh lebih mundur dari 3 hari yang lalu.',
+            'tanggal.after_or_equal'  => 'Tanggal tidak boleh lebih mundur dari 3 hari kerja terakhir.',
             'jenis_absen.in'          => 'Jenis absensi harus masuk atau pulang.',
             'bukti.required'          => 'Bukti wajib diunggah.',
             'bukti.max'               => 'Ukuran bukti maksimal 5 MB.',
