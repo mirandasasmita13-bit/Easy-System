@@ -206,6 +206,15 @@
                     <span class="text-sm font-medium">Manajemen Cuti</span>
                 </a>
 
+                <a href="{{ url('/monitoring-cuti-tambahan') }}"
+                   class="flex items-center gap-4 rounded-xl px-4 py-3 transition
+                          {{ request()->is('monitoring-cuti-tambahan*') ? 'bg-purple-500/20 text-white' : 'text-purple-100 hover:bg-white/5' }}">
+                    <span class="text-sm {{ request()->is('monitoring-cuti-tambahan*') ? 'text-purple-300' : 'text-purple-400' }}">
+                        {{ request()->is('monitoring-cuti-tambahan*') ? '●' : '○' }}
+                    </span>
+                    <span class="text-sm font-medium">Monitoring Cuti Tambahan</span>
+                </a>
+
                 <a href="{{ url('/rekap') }}"
                    class="flex items-center gap-4 rounded-xl px-4 py-3 transition
                           {{ request()->is('rekap') || request()->is('rekap/export*') ? 'bg-purple-500/20 text-white' : 'text-purple-100 hover:bg-white/5' }}">
@@ -482,22 +491,32 @@
                 <span class="text-purple-300">{{ request()->is('dashboard') ? '●' : '○' }}</span>
                 Dashboard
             </a>
+
             <a href="{{ url('/ppnpn') }}" class="mobile-menu-item">
                 <span class="text-purple-300">{{ request()->is('ppnpn*') ? '●' : '○' }}</span>
                 Data PPNPN
             </a>
+
             <a href="{{ url('/manajemen-cuti') }}" class="mobile-menu-item">
                 <span class="text-purple-300">{{ request()->is('manajemen-cuti*') ? '●' : '○' }}</span>
                 Manajemen Cuti
             </a>
+
+            <a href="{{ url('/monitoring-cuti-tambahan') }}" class="mobile-menu-item">
+                <span class="text-purple-300">{{ request()->is('monitoring-cuti-tambahan*') ? '●' : '○' }}</span>
+                Monitoring Cuti Tambahan
+            </a>
+
             <a href="{{ url('/rekap') }}" class="mobile-menu-item">
                 <span class="text-purple-300">{{ request()->is('rekap') || request()->is('rekap/export*') ? '●' : '○' }}</span>
                 Rekap Absensi
             </a>
+
             <a href="{{ url('/rekap-lembur') }}" class="mobile-menu-item">
                 <span class="text-purple-300">{{ request()->is('rekap-lembur*') ? '●' : '○' }}</span>
                 Rekap Lembur
             </a>
+
             <a href="{{ url('/laporan') }}" class="mobile-menu-item">
                 <span class="text-purple-300">{{ request()->is('laporan*') ? '●' : '○' }}</span>
                 Laporan

@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\CutiTambahan;
 use App\Models\TanggalMerah;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CutiTambahanController extends Controller
 {
+    // =========================================================
+    // PEGAWAI
+    // =========================================================
+
     public function index()
     {
         $user = auth()->user();
@@ -77,6 +82,61 @@ class CutiTambahanController extends Controller
         return back()->with('success', 'Cuti tambahan berhasil disimpan.');
     }
 
+    // =========================================================
+    // ADMIN — MONITORING
+    // =========================================================
+
+    public function adminIndex(Request $request)
+    {
+        $query = CutiTambahan::with('user');
+
+        // Filter by pegawai
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        // Search by nomor SICT atau nama
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nomor_sict', 'like', "%{$search}%")
+                  ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $daftarSict = $query
+            ->orderByRaw('CAST(SUBSTRING(nomor_sict, 6) AS UNSIGNED) ASC')
+            ->get();
+
+        $daftarPegawai = User::where('role', 'pegawai')
+            ->orderBy('name')
+            ->get();
+
+        return view('cuti_tambahan.admin_index', compact('daftarSict', 'daftarPegawai'));
+    }
+
+    public function downloadSurat(CutiTambahan $cutiTambahan)
+    {
+        // Kalau surat kosong / placeholder, tolak
+        if (!$cutiTambahan->surat || $cutiTambahan->surat === '-') {
+            abort(404, 'Surat tidak tersedia.');
+        }
+
+        $path = storage_path('app/public/' . $cutiTambahan->surat);
+
+        if (!file_exists($path)) {
+            abort(404, 'File surat tidak ditemukan.');
+        }
+
+        $nama = $cutiTambahan->nama_surat ?: 'surat-' . $cutiTambahan->nomor_sict . '.pdf';
+
+        return response()->download($path, $nama);
+    }
+
+    // =========================================================
+    // HELPER
+    // =========================================================
+
     private function hitungHariKerja(Carbon $mulai, Carbon $selesai): int
     {
         $jumlah  = 0;
@@ -109,7 +169,7 @@ class CutiTambahanController extends Controller
             return 'SICT-1';
         }
 
-        $angka = (int) substr($terakhir, 5); // "SICT-15" → 15
+        $angka = (int) substr($terakhir, 5);
         $angka++;
 
         return 'SICT-' . $angka;

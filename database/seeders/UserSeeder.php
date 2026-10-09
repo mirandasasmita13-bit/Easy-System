@@ -10,7 +10,9 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. ADMIN PERTAMA — SELALU DIBUAT 
+        // ============================================================
+        // 1. ADMIN
+        // ============================================================
         User::firstOrCreate(
             ['username' => 'admin'],
             [
@@ -24,12 +26,11 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // 2. ADMIN KEDUA — TAMBAHAN
         User::firstOrCreate(
-            ['username' => 'icanbbn'], // pastikan username beda
+            ['username' => 'icanbbn'],
             [
                 'name'                    => 'Ica',
-                'password'                => Hash::make('Gayo122#'), 
+                'password'                => Hash::make('Gayo122#'),
                 'role'                    => 'admin',
                 'status'                  => 'aktif',
                 'jatah_cuti_tahunan'      => 12,
@@ -38,12 +39,11 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // 3. ADMIN KETIGA — TAMBAHAN
         User::firstOrCreate(
-            ['username' => 'fachri.irvanto'], 
+            ['username' => 'fachri.irvanto'],
             [
                 'name'                    => 'Fachri',
-                'password'                => Hash::make('fachri1010#'), 
+                'password'                => Hash::make('fachri1010#'),
                 'role'                    => 'admin',
                 'status'                  => 'aktif',
                 'jatah_cuti_tahunan'      => 12,
@@ -51,13 +51,13 @@ class UserSeeder extends Seeder
                 'tahun_cuti'              => now()->year,
             ]
         );
-        
-        // Aku super admin 
+
+        // Super admin
         User::firstOrCreate(
-            ['username' => 'mrnda'], // pastikan username beda
+            ['username' => 'mrnda'],
             [
                 'name'                    => 'Mirandaa Yeppo',
-                'password'                => Hash::make('kodokzumaa'), 
+                'password'                => Hash::make('kodokzumaa'),
                 'role'                    => 'admin',
                 'status'                  => 'aktif',
                 'jatah_cuti_tahunan'      => 12,
@@ -66,9 +66,41 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // 2. DUMMY USER — HANYA DI LOKAL
-        if (app()->environment('local', 'testing')) {
 
+        // DATAPEGAWAI
+        $pegawai = [
+            ['username' => 'bachrul.ulum',      'name' => 'Bachrul Ulum'],
+            ['username' => 'achmad.shafiq',     'name' => 'Achmad Shafiq Bafadhal'],
+            ['username' => 'jefrizal',          'name' => 'Jefrizal'],
+            ['username' => 'triyono',           'name' => 'Triyono'],
+            ['username' => 'harunsyah.galung',  'name' => 'Harunsyah H. Galung'],
+            ['username' => 'rianda.imanullah',  'name' => 'Rianda Imanullah'],
+            ['username' => 'fakhri',            'name' => 'Fakhri Irvanto'],
+            ['username' => 'klarisa',           'name' => 'Klarisa Judhika Nathaniece Nababan'],
+            ['username' => 'prisicilla',        'name' => 'Prisicilla Frederica Br Purba'],
+            ['username' => 'aksha',             'name' => 'Aksha Mahdar Alwi'],
+            ['username' => 'ghulam.aly',        'name' => 'Ghulam Aly'],
+        ];
+
+        foreach ($pegawai as $data) {
+            User::firstOrCreate(
+                ['username' => $data['username']],
+                [
+                    'name'                    => trim($data['name']),
+                    'password'                => Hash::make('pegawai12345'),
+                    'role'                    => 'pegawai',
+                    'status'                  => 'aktif',
+                    'jatah_cuti_tahunan'      => 12,
+                    'cuti_tahunan_sebelumnya' => 0,
+                    'tahun_cuti'              => now()->year,
+                ]
+            );
+        }
+
+        $this->command->info('Berhasil bikin 4 admin + ' . count($pegawai) . ' pegawai.');
+
+        // 3. DUMMY USER — HANYA DI LOKAL
+        if (app()->environment('local', 'testing')) {
             User::firstOrCreate(
                 ['username' => 'pegawai'],
                 [

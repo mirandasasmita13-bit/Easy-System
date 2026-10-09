@@ -13,27 +13,27 @@ class CutiTambahanSeeder extends Seeder
     public function run(): void
     {
         $data = [
-            ['SICT-1',  'Prisicilla Frederica Br Purba',       '2026-02-19', '2026-02-20'],
+            ['SICT-1',  'Prisicilla Frederica Br Purba',        '2026-02-19', '2026-02-20'],
             ['SICT-2',  'Fakhri Irvanto',                       '2026-02-18', '2026-02-18'],
-            ['SICT-3',  'Klarisa Judhika Nathaneece Nababan',   '2026-03-17', '2026-03-17'],
+            ['SICT-3',  'Klarisa Judhika Nathaniece Nababan',   '2026-03-17', '2026-03-17'],
             ['SICT-4',  'Jefrizal',                             '2026-02-19', '2026-02-20'],
             ['SICT-5',  'Aksha Mahdar Alwi',                    '2026-02-19', '2026-02-21'],
-            ['SICT-6',  'Klarisa Judhika Nathaneece Nababan',   '2026-02-25', '2026-02-26'],
+            ['SICT-6',  'Klarisa Judhika Nathaniece Nababan',   '2026-02-25', '2026-02-26'],
             ['SICT-7',  'Jefrizal',                             '2026-03-17', '2026-03-17'],
             ['SICT-8',  'Fakhri Irvanto',                       '2026-03-09', '2026-03-17'],
-            ['SICT-9',  'Prisicilla Frederica Br Purba',       '2026-06-18', '2026-06-19'],
+            ['SICT-9',  'Prisicilla Frederica Br Purba',        '2026-06-18', '2026-06-19'],
             ['SICT-10', 'Jefrizal',                             '2026-06-08', '2026-06-11'],
             ['SICT-11', 'Jefrizal',                             '2026-08-03', '2026-08-06'],
             ['SICT-12', 'Rianda Imanullah',                     '2026-08-05', '2026-08-14'],
             ['SICT-13', 'Triyono',                              '2026-08-27', '2026-08-28'],
-            ['SICT-14', 'Klarisa Judhika Nathaneece Nababan',   '2026-08-27', '2026-08-28'],
-            ['SICT-15', 'Klarisa Judhika Nathaneece Nababan',   '2026-08-27', '2026-08-28'],
+            ['SICT-14', 'Klarisa Judhika Nathaniece Nababan',   '2026-08-27', '2026-08-28'],
         ];
 
         foreach ($data as $item) {
             [$nomorSict, $nama, $mulai, $selesai] = $item;
 
-            $user = User::where('name', 'like', "%{$nama}%")->first();
+            // Cari user by name (case-insensitive)
+            $user = User::whereRaw('LOWER(name) = ?', [strtolower($nama)])->first();
 
             if (!$user) {
                 $this->command->warn("User tidak ditemukan: {$nama}");

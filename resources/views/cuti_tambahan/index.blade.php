@@ -92,10 +92,6 @@
                     </div>
                 </div>
 
-                <p class="text-xs text-slate-400 -mt-2">
-                    Sabtu, Minggu, dan tanggal merah tidak dihitung sebagai hari cuti.
-                </p>
-
                 {{-- KETERANGAN --}}
                 <div>
                     <label class="block text-sm font-semibold text-slate-700 mb-2">
@@ -120,6 +116,9 @@
                     <p class="mt-2 text-xs text-slate-400">
                         Format PDF, JPG, JPEG, atau PNG. Maksimal 5 MB.
                     </p>
+                    <p class="mt-2 text-xs text-slate-400">
+                        Pastikan Surat Sudah di TTE dan mendapat No SICT
+                    </p>
                 </div>
 
                 {{-- BUTTON --}}
@@ -134,7 +133,7 @@
         </div>
 
 
-        {{-- DAFTAR SICT TAHUN INI (mirip Excel) --}}
+        {{-- DAFTAR SICT TAHUN INI --}}
         <div>
             <div class="mb-4">
                 <h2 class="text-lg font-bold text-slate-800">

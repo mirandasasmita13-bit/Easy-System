@@ -45,7 +45,7 @@ Route::post('/register', [LoginController::class, 'storeRegister'])->name('regis
 // ============================================
 Route::middleware('auth')->group(function () {
 
-    // DASHBOARD — otomatis diarahkan sesuai role (admin/ppnpn/pegawai)
+    // DASHBOARD
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // ABSENSI (PPNPN)
@@ -75,10 +75,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/pengajuan_surat', [PengajuansuratController::class, 'store'])->name('pengajuan_surat.store');
     Route::put('/pengajuan_surat/{pengajuanSurat}', [PengajuansuratController::class, 'update'])->name('pengajuan_surat.update');
 
-    // CUTI TAMBAHAN (Pegawai)
-    Route::get('/cuti-tambahan',  [CutiTambahanController::class, 'index'])->name('cuti_tambahan.index');
-    Route::post('/cuti-tambahan', [CutiTambahanController::class, 'store'])->name('cuti_tambahan.store');
-
     // PROFIL
     Route::get('/profil',      [ProfilController::class, 'index'])->name('profil.index');
     Route::get('/profil/edit', [ProfilController::class, 'edit'])->name('profil.edit');
@@ -93,84 +89,86 @@ Route::middleware('auth')->group(function () {
     // Preview File
     Route::get('/file/{type}/{id}', [FileController::class, 'preview'])->name('file.preview');
 
-    // Aktif dan Nonaktifkan pendaftaran 
+    // Toggle pendaftaran
     Route::post('/admin/toggle-pendaftaran', function () {
-    if (auth()->user()->role !== 'admin') {
-        abort(403);
-    }
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
 
-    $status = \App\Models\User::togglePendaftaran();
+        $status = \App\Models\User::togglePendaftaran();
 
-    return back()->with(
-        'success',
-        'Pendaftaran berhasil ' . ($status ? 'dibuka' : 'ditutup') . '.'
-    );
+        return back()->with(
+            'success',
+            'Pendaftaran berhasil ' . ($status ? 'dibuka' : 'ditutup') . '.'
+        );
     })->middleware('auth')->name('admin.toggle-pendaftaran');
+
+
+    // ============================================
+    // PEGAWAI ONLY
+    // ============================================
+    Route::middleware('role:pegawai')->group(function () {
+
+        // CUTI TAMBAHAN (khusus pegawai)
+        Route::get('/cuti-tambahan',  [CutiTambahanController::class, 'index'])->name('cuti_tambahan.index');
+        Route::post('/cuti-tambahan', [CutiTambahanController::class, 'store'])->name('cuti_tambahan.store');
+
+    });
+
 
     // ============================================
     // ADMIN ONLY
     // ============================================
     Route::middleware('role:admin')->group(function () {
 
-        // ============================================
         // DATA PPNPN
-        // ============================================
         Route::get('/ppnpn', [PpnpnController::class, 'index'])->name('ppnpn.index');
         Route::post('/ppnpn/{user}/nonaktifkan', [PpnpnController::class, 'nonaktifkan'])->name('ppnpn.nonaktifkan');
         Route::post('/ppnpn/{user}/aktifkan',    [PpnpnController::class, 'aktifkan'])->name('ppnpn.aktifkan');
 
-
-        // ============================================
-        // MANAJEMEN CUTI
-        // ============================================
-
-        // 1. Halaman daftar semua PPNPN + cuti
+        // MANAJEMEN CUTI (PPNPN)
         Route::get('/manajemen-cuti', [ManajemenCutiController::class, 'indexAll'])
             ->name('manajemen-cuti.index');
 
-        // 2. Reset cuti SEMUA PPNPN (HARUS di atas route {user} agar tidak bentrok)
         Route::post('/ppnpn/reset-semua-cuti', [PpnpnController::class, 'resetSemuaCuti'])
             ->name('ppnpn.reset-semua-cuti');
 
-        // 3. Reset cuti 1 PPNPN
         Route::post('/ppnpn/{user}/reset-cuti', [PpnpnController::class, 'resetCuti'])
             ->name('ppnpn.reset-cuti');
 
-        // 4. Halaman detail cuti 1 PPNPN
         Route::get('/ppnpn/{user}/manajemen-cuti', [ManajemenCutiController::class, 'index'])
             ->name('ppnpn.manajemen-cuti');
 
-        // 5. Simpan cuti baru
         Route::post('/ppnpn/{user}/manajemen-cuti', [ManajemenCutiController::class, 'store'])
             ->name('ppnpn.manajemen-cuti.store');
 
-        // 6. Update cuti
         Route::put('/manajemen-cuti/{cuti}', [ManajemenCutiController::class, 'update'])
             ->name('manajemen-cuti.update');
 
-        // 7. Hapus cuti
         Route::delete('/manajemen-cuti/{cuti}', [ManajemenCutiController::class, 'destroy'])
             ->name('manajemen-cuti.destroy');
 
+        // MONITORING CUTI TAMBAHAN (PEGAWAI)
+        Route::get('/monitoring-cuti-tambahan', [CutiTambahanController::class, 'adminIndex'])
+            ->name('cuti_tambahan.admin.index');
 
-        // ============================================
-        // LAIN-LAIN
-        // ============================================
+        Route::get('/monitoring-cuti-tambahan/{cutiTambahan}/download', [CutiTambahanController::class, 'downloadSurat'])
+            ->name('cuti_tambahan.admin.download');
 
-        // Pengajuan (Approval Center)
+        // APPROVAL CENTER
         Route::get('/pengajuan', [PengajuanController::class, 'index'])->name('pengajuan.index');
 
-        // Rekap Absensi
+        // REKAP ABSENSI
         Route::get('/rekap',              [RekapabsensiController::class, 'index'])->name('rekapabsensi.index');
         Route::get('/rekap/export/excel', [RekapabsensiController::class, 'exportExcel'])->name('rekapabsensi.export.excel');
         Route::get('/rekap/export/pdf',   [RekapabsensiController::class, 'exportPdf'])->name('rekapabsensi.export.pdf');
 
-        // Rekap Lembur
+        // REKAP LEMBUR
         Route::get('/rekap-lembur',              [RekaplemburController::class, 'index'])->name('rekaplembur.index');
         Route::get('/rekap-lembur/export/excel', [RekaplemburController::class, 'exportExcel'])->name('rekaplembur.export.excel');
         Route::get('/rekap-lembur/export/pdf',   [RekaplemburController::class, 'exportPdf'])->name('rekaplembur.export.pdf');
 
-        // Laporan
+        // LAPORAN
         Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan');
     });
 });
