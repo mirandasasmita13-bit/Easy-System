@@ -10,9 +10,7 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // ============================================================
-        // 1. ADMIN
-        // ============================================================
+        // ADMIN
         User::firstOrCreate(
             ['username' => 'admin'],
             [
@@ -69,25 +67,25 @@ class UserSeeder extends Seeder
 
         // DATAPEGAWAI
         $pegawai = [
-            ['username' => 'bachrul.ulum',      'name' => 'Bachrul Ulum'],
-            ['username' => 'achmad.shafiq',     'name' => 'Achmad Shafiq Bafadhal'],
-            ['username' => 'jefrizal',          'name' => 'Jefrizal'],
-            ['username' => 'triyono',           'name' => 'Triyono'],
-            ['username' => 'harunsyah.galung',  'name' => 'Harunsyah H. Galung'],
-            ['username' => 'rianda.imanullah',  'name' => 'Rianda Imanullah'],
-            ['username' => 'fakhri',            'name' => 'Fakhri Irvanto'],
-            ['username' => 'klarisa',           'name' => 'Klarisa Judhika Nathaniece Nababan'],
-            ['username' => 'prisicilla',        'name' => 'Prisicilla Frederica Br Purba'],
-            ['username' => 'aksha',             'name' => 'Aksha Mahdar Alwi'],
-            ['username' => 'ghulam.aly',        'name' => 'Ghulam Aly'],
+            ['username' => 'ulum',       'name' => 'Bachrul Ulum'],
+            ['username' => 'shafiq',     'name' => 'Achmad Shafiq Bafadhal'],
+            ['username' => 'jefrizal',   'name' => 'Jefrizal'],
+            ['username' => 'triyono',    'name' => 'Triyono'],
+            ['username' => 'harunsyah',  'name' => 'Harunsyah H. Galung'],
+            ['username' => 'rianda',     'name' => 'Rianda Imanullah'],
+            ['username' => 'fakhri',     'name' => 'Fakhri Irvanto'],
+            ['username' => 'klarisa',    'name' => 'Klarisa Judhika Nathaniece Nababan'],
+            ['username' => 'prisicilla', 'name' => 'Prisicilla Frederica Br Purba'],
+            ['username' => 'aksha',      'name' => 'Aksha Mahdar Alwi'],
+            ['username' => 'ghulam',     'name' => 'Ghulam Aly'],
         ];
 
         foreach ($pegawai as $data) {
-            User::firstOrCreate(
+            User::updateOrCreate(
                 ['username' => $data['username']],
                 [
                     'name'                    => trim($data['name']),
-                    'password'                => Hash::make('pegawai12345'),
+                    'password'                => Hash::make($data['username'] . '123'),
                     'role'                    => 'pegawai',
                     'status'                  => 'aktif',
                     'jatah_cuti_tahunan'      => 12,
@@ -97,15 +95,18 @@ class UserSeeder extends Seeder
             );
         }
 
-        $this->command->info('Berhasil bikin 4 admin + ' . count($pegawai) . ' pegawai.');
+        $this->command->info('✅ Berhasil update ' . (count($admin) + count($pegawai)) . ' akun.');
 
+
+        // ============================================================
         // 3. DUMMY USER — HANYA DI LOKAL
+        // ============================================================
         if (app()->environment('local', 'testing')) {
-            User::firstOrCreate(
+            User::updateOrCreate(
                 ['username' => 'pegawai'],
                 [
                     'name'                    => 'Pegawai Test',
-                    'password'                => Hash::make('pegawai12345'),
+                    'password'                => Hash::make('pegawai123'),
                     'role'                    => 'pegawai',
                     'status'                  => 'aktif',
                     'jatah_cuti_tahunan'      => 12,

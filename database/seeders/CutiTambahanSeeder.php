@@ -12,31 +12,37 @@ class CutiTambahanSeeder extends Seeder
 {
     public function run(): void
     {
+        // Data SICT — pakai USERNAME (bukan nama)
         $data = [
-            ['SICT-1',  'Prisicilla Frederica Br Purba',        '2026-02-19', '2026-02-20'],
-            ['SICT-2',  'Fakhri Irvanto',                       '2026-02-18', '2026-02-18'],
-            ['SICT-3',  'Klarisa Judhika Nathaniece Nababan',   '2026-03-17', '2026-03-17'],
-            ['SICT-4',  'Jefrizal',                             '2026-02-19', '2026-02-20'],
-            ['SICT-5',  'Aksha Mahdar Alwi',                    '2026-02-19', '2026-02-21'],
-            ['SICT-6',  'Klarisa Judhika Nathaniece Nababan',   '2026-02-25', '2026-02-26'],
-            ['SICT-7',  'Jefrizal',                             '2026-03-17', '2026-03-17'],
-            ['SICT-8',  'Fakhri Irvanto',                       '2026-03-09', '2026-03-17'],
-            ['SICT-9',  'Prisicilla Frederica Br Purba',        '2026-06-18', '2026-06-19'],
-            ['SICT-10', 'Jefrizal',                             '2026-06-08', '2026-06-11'],
-            ['SICT-11', 'Jefrizal',                             '2026-08-03', '2026-08-06'],
-            ['SICT-12', 'Rianda Imanullah',                     '2026-08-05', '2026-08-14'],
-            ['SICT-13', 'Triyono',                              '2026-08-27', '2026-08-28'],
-            ['SICT-14', 'Klarisa Judhika Nathaniece Nababan',   '2026-08-27', '2026-08-28'],
+            ['SICT-1',  'prisicilla', '2026-02-19', '2026-02-20'],
+            ['SICT-2',  'fakhri',     '2026-02-18', '2026-02-18'],
+            ['SICT-3',  'klarisa',    '2026-03-17', '2026-03-17'],
+            ['SICT-4',  'jefrizal',   '2026-02-19', '2026-02-20'],
+            ['SICT-5',  'aksha',      '2026-02-19', '2026-02-21'],
+            ['SICT-6',  'klarisa',    '2026-02-25', '2026-02-26'],
+            ['SICT-7',  'jefrizal',   '2026-03-17', '2026-03-17'],
+            ['SICT-8',  'fakhri',     '2026-03-09', '2026-03-17'],
+            ['SICT-9',  'prisicilla', '2026-06-18', '2026-06-19'],
+            ['SICT-10', 'jefrizal',   '2026-06-08', '2026-06-11'],
+            ['SICT-11', 'jefrizal',   '2026-08-03', '2026-08-06'],
+            ['SICT-12', 'rianda',     '2026-08-05', '2026-08-14'],
+            ['SICT-13', 'triyono',    '2026-08-27', '2026-08-28'],
+            ['SICT-14', 'klarisa',    '2026-08-27', '2026-08-28'],
+            ['SICT-15', 'fakhri',     '2026-09-16', '2026-09-18'],
+            ['SICT-16', 'jefrizal',   '2026-10-06', '2026-10-07'],
+            ['SICT-17', 'aksha',      '2026-10-28', '2026-10-30'],
         ];
 
         foreach ($data as $item) {
-            [$nomorSict, $nama, $mulai, $selesai] = $item;
+            [$nomorSict, $username, $mulai, $selesai] = $item;
 
-            // Cari user by name (case-insensitive)
-            $user = User::whereRaw('LOWER(name) = ?', [strtolower($nama)])->first();
+            // MATCH BY USERNAME — dijamin unik
+            $user = User::where('username', $username)
+                ->where('role', 'pegawai')
+                ->first();
 
             if (!$user) {
-                $this->command->warn("User tidak ditemukan: {$nama}");
+                $this->command->warn("User tidak ditemukan: {$username}");
                 continue;
             }
 
@@ -49,9 +55,10 @@ class CutiTambahanSeeder extends Seeder
                 'tanggal_mulai'     => $mulai,
                 'tanggal_selesai'   => $selesai,
                 'jumlah_hari'       => $jumlahHari,
+                'status'            => 'aktif',
                 'surat'             => '-',
                 'nama_surat'        => null,
-                'keterangan'        => 'Data lama dari Excel',
+                'keterangan'        => 'Data dari Excel',
             ]);
         }
     }

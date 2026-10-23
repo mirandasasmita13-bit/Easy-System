@@ -73,7 +73,7 @@
     </div>
 
 
-    {{-- INFO: Absen menggantung yang bisa dipulangkan --}}
+    {{-- INFO: Absen menggantung --}}
     @if($absensiBisaPulang)
         <div class="mb-5 rounded-xl bg-violet-50 border border-violet-200 px-5 py-4 flex items-start gap-3">
             <div class="text-2xl shrink-0">🌙</div>
@@ -111,9 +111,7 @@
                 </div>
             </div>
 
-            {{-- LOGIC BARU: form masuk SELALU tampil, kecuali sudah absen hari ini --}}
             @if($absensiHariIni && !$absensiHariIni->jam_pulang)
-                {{-- Sudah absen masuk, belum pulang → sembunyikan form --}}
                 <div class="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-5 text-center">
                     <p class="text-sm text-slate-500">
                         Kamu sudah absen masuk
@@ -130,7 +128,6 @@
                     ✓ &nbsp; Sudah Absen Masuk
                 </button>
             @else
-                {{-- Belum absen hari ini, ATAU sudah absen lengkap → tampilkan form --}}
                 <form id="formAbsenMasuk" action="{{ url('/absensi/masuk') }}" method="POST" enctype="multipart/form-data">
                     @csrf
 
@@ -144,7 +141,6 @@
                         </select>
                     </div>
 
-                {{-- CHECKBOX JAGA POS — CUMA BUAT SATPAM --}}
                 @if(auth()->user()->sub_role === 'satpam')
                     <div class="mt-4">
                         <label for="is_jaga_pos"
@@ -243,7 +239,6 @@
             </div>
 
             @if($absensiBisaPulang)
-                {{-- Ada record yang bisa dipulangkan → tampilkan form --}}
                 <div class="mt-4 rounded-xl bg-violet-50 border border-violet-100 p-3">
                     <p class="text-xs font-semibold text-violet-700">
                         Shift: {{ $absensiBisaPulang->shift === 'malam' ? 'Malam' : 'Pagi' }}
@@ -310,7 +305,6 @@
                     </button>
                 </form>
             @else
-                {{-- Tidak ada yang bisa dipulangkan --}}
                 <div class="mt-6 rounded-xl bg-slate-50 border border-slate-100 p-5 text-center">
                     <p class="text-sm text-slate-400">
                         @if(!$absensiHariIni)
@@ -416,8 +410,10 @@
             </div>
 
             <div class="relative bg-black shrink-0">
+                {{-- VIDEO MIRROR: biar kayak cermin --}}
                 <video id="videoKamera" autoplay playsinline muted
-                       class="w-full aspect-[3/4] max-h-[55vh] object-cover"></video>
+                       class="w-full aspect-[3/4] max-h-[55vh] object-cover"
+                       style="transform: scaleX(-1);"></video>
                 <canvas id="canvasKamera" class="hidden"></canvas>
 
                 <div class="pointer-events-none absolute inset-x-0 bottom-0 pt-16 px-4 pb-3"
@@ -482,7 +478,7 @@
     </div>
 
 
-    {{-- JAVASCRIPT (TIDAK BERUBAH) --}}
+    {{-- JAVASCRIPT --}}
     <script>
 
         const OFFICE_LOKASI = {
@@ -491,6 +487,8 @@
             radius: {{ $radiusMaksimal }},
             alamat: {!! json_encode($kantorAlamat) !!}
         };
+
+        const NAMA_USER = {!! json_encode(auth()->user()->name) !!};
 
         document.addEventListener('DOMContentLoaded', function () {
 
@@ -597,7 +595,11 @@
                 }
                 try {
                     streamKamera = await navigator.mediaDevices.getUserMedia({
-                        video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } },
+                        video: {
+                            facingMode: 'user',
+                            width:  { ideal: 1920 },
+                            height: { ideal: 2560 }
+                        },
                         audio: false
                     });
                     videoKamera.srcObject = streamKamera;
@@ -665,19 +667,24 @@
 
                 const label = jenis === 'pulang' ? 'ABSEN PULANG' : 'ABSEN MASUK';
 
-                const barHeight = Math.max(180, Math.round(height * 0.35));
+                // Label + nama dipisah pakai |
+                const barisHeader  = 'SIKAT  |  ' + label;
+                const barisNama    = NAMA_USER;
+
+                const barHeight = Math.max(190, Math.round(height * 0.36));
                 const paddingX  = Math.round(width * 0.05);
 
                 const fontHeader = Math.max(13, Math.round(width * 0.032));
-                const fontMain   = Math.max(17, Math.round(width * 0.042));
-                const fontSub    = Math.max(12, Math.round(width * 0.028));
-                const fontSmall  = Math.max(11, Math.round(width * 0.026));
-                const lineGap    = Math.max(20, Math.round(width * 0.042));
+                const fontNama   = Math.max(14, Math.round(width * 0.036));
+                const fontMain   = Math.max(16, Math.round(width * 0.040));
+                const fontSub    = Math.max(11, Math.round(width * 0.027));
+                const fontSmall  = Math.max(10, Math.round(width * 0.025));
+                const lineGap    = Math.max(18, Math.round(width * 0.042));
 
                 const gradient = context.createLinearGradient(0, height - barHeight, 0, height);
                 gradient.addColorStop(0,    'rgba(10, 10, 20, 0)');
-                gradient.addColorStop(0.30, 'rgba(10, 10, 20, 0.60)');
-                gradient.addColorStop(1,    'rgba(10, 10, 20, 0.92)');
+                gradient.addColorStop(0.35, 'rgba(10, 10, 20, 0.65)');
+                gradient.addColorStop(1,    'rgba(10, 10, 20, 0.95)');
 
                 context.fillStyle = gradient;
                 context.fillRect(0, height - barHeight, width, barHeight);
@@ -694,30 +701,19 @@
                     return out + '...';
                 }
 
-                let y = height - barHeight + lineGap * 1.0;
-                context.textBaseline = 'alphabetic';
+                // === MULAI DARI BAWAH ===
+                let y = height - lineGap * 0.6;
 
-                context.fillStyle = '#c4b5fd';
-                context.font = '700 ' + fontHeader + 'px Arial, sans-serif';
-                context.fillText('SIKAT  |  ' + label, paddingX, y);
-
-                y += lineGap;
-                context.fillStyle = '#ffffff';
-                context.font = '700 ' + fontMain + 'px Arial, sans-serif';
-                context.fillText(
-                    fitText(tanggal + ' | ' + jam, '700 ' + fontMain + 'px Arial, sans-serif', maxWidth),
-                    paddingX, y
-                );
-
-                y += lineGap * 0.95;
-                context.fillStyle = '#f1f5f9';
+                // GPS
+                context.fillStyle = '#94a3b8';
                 context.font = '500 ' + fontSmall + 'px Arial, sans-serif';
                 context.fillText(
-                    fitText(OFFICE_LOKASI.alamat, '500 ' + fontSmall + 'px Arial, sans-serif', maxWidth),
+                    fitText('GPS: ' + gpsText, '500 ' + fontSmall + 'px Arial, sans-serif', maxWidth),
                     paddingX, y
                 );
 
-                y += lineGap * 0.9;
+                // Jarak
+                y -= lineGap * 0.85;
                 context.fillStyle = dalamRadius ? '#86efac' : '#fca5a5';
                 context.font = '700 ' + fontSub + 'px Arial, sans-serif';
                 context.fillText(
@@ -725,11 +721,45 @@
                     paddingX, y
                 );
 
-                y += lineGap * 0.85;
+                // Alamat
+                y -= lineGap * 0.9;
                 context.fillStyle = '#cbd5e1';
                 context.font = '500 ' + fontSmall + 'px Arial, sans-serif';
+
+                let alamatPendek = OFFICE_LOKASI.alamat;
+                if (alamatPendek.length > 60) {
+                    alamatPendek = alamatPendek.substring(0, 60) + '...';
+                }
+
                 context.fillText(
-                    fitText('GPS: ' + gpsText, '500 ' + fontSmall + 'px Arial, sans-serif', maxWidth),
+                    fitText(alamatPendek, '500 ' + fontSmall + 'px Arial, sans-serif', maxWidth),
+                    paddingX, y
+                );
+
+                // Tanggal & Jam
+                y -= lineGap * 0.95;
+                context.fillStyle = '#ffffff';
+                context.font = '700 ' + fontMain + 'px Arial, sans-serif';
+                context.fillText(
+                    fitText(tanggal + ' | ' + jam, '700 ' + fontMain + 'px Arial, sans-serif', maxWidth),
+                    paddingX, y
+                );
+
+                // NAMA USER (ORANGE)
+                y -= lineGap * 0.95;
+                context.fillStyle = '#fb923c';
+                context.font = '700 ' + fontNama + 'px Arial, sans-serif';
+                context.fillText(
+                    fitText(barisNama, '700 ' + fontNama + 'px Arial, sans-serif', maxWidth),
+                    paddingX, y
+                );
+
+                // Label SIKAT | ABSEN MASUK/PULANG
+                y -= lineGap * 0.95;
+                context.fillStyle = '#c4b5fd';
+                context.font = '700 ' + fontHeader + 'px Arial, sans-serif';
+                context.fillText(
+                    fitText(barisHeader, '700 ' + fontHeader + 'px Arial, sans-serif', maxWidth),
                     paddingX, y
                 );
             }
@@ -766,14 +796,37 @@
                     canvasKamera.height = cropH;
 
                     const context = canvasKamera.getContext('2d');
+                    context.imageSmoothingEnabled = true;
+                    context.imageSmoothingQuality = 'high';
+
+                    // Preview mirror, hasil normal
+                    context.save();
+                    context.translate(cropW, 0);
+                    context.scale(-1, 1);
                     context.drawImage(videoKamera, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+                    context.restore();
 
                     gambarWatermark(context, cropW, cropH, jenisAktif);
 
                     canvasKamera.toBlob(function (blob) {
                         if (!blob) { alert('Foto gagal diambil.'); return; }
 
-                        const file = new File([blob], 'absensi-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+                        // Nama file berurutan
+                        const now = new Date();
+                        const tgl = now.toLocaleDateString('id-ID', {
+                            timeZone: 'Asia/Jakarta',
+                            year: 'numeric', month: '2-digit', day: '2-digit'
+                        }).split('/').reverse().join('-');
+
+                        const todayKey = 'absensi_counter_' + tgl;
+                        let counter = parseInt(localStorage.getItem(todayKey) || '0', 10) + 1;
+                        localStorage.setItem(todayKey, counter);
+
+                        const nomorUrut = String(counter).padStart(3, '0');
+                        const namaFile = `absensi-${tgl}-${nomorUrut}.jpg`;
+
+                        const file = new File([blob], namaFile, { type: 'image/jpeg' });
+
                         const dataTransfer = new DataTransfer();
                         dataTransfer.items.add(file);
                         targetFoto.files = dataTransfer.files;
@@ -794,7 +847,7 @@
 
                         if (jenisAktif === 'masuk')  cekFormMasuk();
                         if (jenisAktif === 'pulang') cekFormPulang();
-                    }, 'image/jpeg', 0.92);
+                    }, 'image/jpeg', 0.98);
                 });
             }
 

@@ -10,8 +10,8 @@ class RekaplemburController extends Controller
 {
     public function index(Request $request)
     {
-        $bulan = (int) $request->input('bulan', now()->month);
-        $tahun = (int) $request->input('tahun', now()->year);
+        $bulan  = (int) $request->input('bulan', now()->month);
+        $tahun  = (int) $request->input('tahun', now()->year);
         $userId = $request->input('user_id');
 
         // Daftar PPNPN
@@ -20,9 +20,13 @@ class RekaplemburController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Data lembur periode ini
-        $query = Lembur::whereYear('tanggal', $tahun)
-            ->whereMonth('tanggal', $bulan);
+        // =====================================================
+        // DATA LEMBUR — CUMA YANG APPROVED
+        // =====================================================
+        $query = Lembur::with('user.profil')
+            ->whereYear('tanggal', $tahun)
+            ->whereMonth('tanggal', $bulan)
+            ->where('status_approval', 'approved');  // ⬅️ KUNCI
 
         if ($userId) {
             $query->where('user_id', $userId);
@@ -33,16 +37,17 @@ class RekaplemburController extends Controller
             ->orderByDesc('jam_mulai')
             ->get();
 
-        $jumlahLembur = $dataLembur->count();
+        // Statistik
+        $jumlahLembur      = $dataLembur->count();
+        $totalJamDisetujui = (float) $dataLembur->sum('total_jam');
+        $totalJamSemua     = $totalJamDisetujui;
 
-        // Total jam disetujui vs semua
-        $totalJamDisetujui = (float) $dataLembur
-            ->where('status_approval', 'approved')
-            ->sum('total_jam');
-
-        $totalJamSemua = (float) $dataLembur->sum('total_jam');
-
-        $jumlahPending = $dataLembur->where('status_approval', 'pending')->count();
+        // Pending (query terpisah)
+        $jumlahPending = Lembur::whereYear('tanggal', $tahun)
+            ->whereMonth('tanggal', $bulan)
+            ->where('status_approval', 'pending')
+            ->when($userId, fn($q) => $q->where('user_id', $userId))
+            ->count();
 
         // Periode
         $tanggalAwal = now()
@@ -65,11 +70,13 @@ class RekaplemburController extends Controller
     }
 
 
-    // Export Excel
+    // =====================================================
+    // EXPORT EXCEL
+    // =====================================================
     public function exportExcel(Request $request)
     {
-        $bulan = (int) $request->input('bulan', now()->month);
-        $tahun = (int) $request->input('tahun', now()->year);
+        $bulan  = (int) $request->input('bulan', now()->month);
+        $tahun  = (int) $request->input('tahun', now()->year);
         $userId = $request->input('user_id');
 
         return \Maatwebsite\Excel\Facades\Excel::download(
@@ -79,16 +86,19 @@ class RekaplemburController extends Controller
     }
 
 
-    // Export PDF
+    // =====================================================
+    // EXPORT PDF
+    // =====================================================
     public function exportPdf(Request $request)
     {
-        $bulan = (int) $request->input('bulan', now()->month);
-        $tahun = (int) $request->input('tahun', now()->year);
+        $bulan  = (int) $request->input('bulan', now()->month);
+        $tahun  = (int) $request->input('tahun', now()->year);
         $userId = $request->input('user_id');
 
         $query = Lembur::with('user.profil')
             ->whereYear('tanggal', $tahun)
-            ->whereMonth('tanggal', $bulan);
+            ->whereMonth('tanggal', $bulan)
+            ->where('status_approval', 'approved');  // ⬅️ KUNCI
 
         if ($userId) {
             $query->where('user_id', $userId);
@@ -104,11 +114,17 @@ class RekaplemburController extends Controller
             ->setMonth($bulan)
             ->startOfMonth();
 
-        $jumlahLembur = $dataLembur->count();
+        $jumlahLembur      = $dataLembur->count();
+        $totalJamDisetujui = (float) $dataLembur->sum('total_jam');
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
             'rekaplembur.pdf',
-            compact('dataLembur', 'jumlahLembur', 'tanggalAwal')
+            compact(
+                'dataLembur',
+                'jumlahLembur',
+                'totalJamDisetujui',
+                'tanggalAwal'
+            )
         )->setPaper('a4', 'landscape');
 
         return $pdf->download(

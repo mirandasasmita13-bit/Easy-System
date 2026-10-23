@@ -29,6 +29,12 @@
     </div>
 @endif
 
+@if(session('error'))
+    <div class="mb-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+        ❌ {{ session('error') }}
+    </div>
+@endif
+
 @if($errors->any())
     <div class="mb-5 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
         <ul class="list-disc list-inside space-y-1">
@@ -48,13 +54,11 @@
     <div class="lg:col-span-1 flex">
         <div class="es-card overflow-hidden w-full flex flex-col">
 
-            {{-- BANNER UNGU --}}
             <div class="h-24 bg-gradient-to-r from-purple-600 via-purple-500 to-purple-400 relative shrink-0">
                 <div class="absolute inset-0 opacity-20"
                      style="background-image: radial-gradient(circle at 20% 30%, white 1.5px, transparent 1.5px), radial-gradient(circle at 70% 70%, white 1.5px, transparent 1.5px); background-size: 30px 30px;"></div>
             </div>
 
-            {{-- FOTO — KLIK LANGSUNG BUKA ALBUM --}}
             <div class="px-6 -mt-16 relative z-10 shrink-0">
 
                 <form id="fotoForm" action="{{ route('profil.update') }}"
@@ -62,7 +66,6 @@
                     @csrf
                     @method('PUT')
 
-                    {{-- Hidden — semua data supaya tidak null --}}
                     <input type="hidden" name="name" value="{{ $user->name }}">
                     <input type="hidden" name="username" value="{{ $user->username }}">
 
@@ -99,7 +102,6 @@
                             @endif
                         </div>
 
-                        {{-- HOVER OVERLAY --}}
                         <div class="absolute inset-0 rounded-full bg-black/50 opacity-0
                                     group-hover:opacity-100 transition
                                     flex items-center justify-center">
@@ -115,18 +117,15 @@
                         </div>
                     </label>
 
-                    {{-- INPUT FILE — HIDDEN --}}
                     <input type="file" id="fotoInput" name="foto" accept="image/*"
                            class="hidden" onchange="autoSubmitFoto(this)">
                 </form>
 
-                {{-- HINT --}}
                 <p class="mt-3 text-center text-[10px] text-slate-400">
                     Klik foto untuk mengubah · Maks 5 MB
                 </p>
             </div>
 
-            {{-- INFO PROFIL --}}
             <div class="px-6 pb-6 pt-4 text-center shrink-0">
                 <h3 class="text-lg font-bold text-slate-900 leading-tight">{{ $user->name }}</h3>
                 <p class="mt-1 text-xs text-slate-400 font-mono">{{ '@' . $user->username }}</p>
@@ -161,20 +160,17 @@
     <div class="lg:col-span-2 flex">
         <div class="es-card w-full flex flex-col">
 
-            {{-- HEADER --}}
             <div class="p-6 sm:p-8 border-b border-slate-100 shrink-0">
                 <h3 class="text-lg font-bold text-slate-900">Edit Biodata</h3>
                 <p class="text-xs text-slate-400 mt-1">Perbarui informasi data diri Anda.</p>
             </div>
 
-            {{-- FORM --}}
             <form action="{{ route('profil.update') }}" method="POST" class="p-6 sm:p-8 flex-1 flex flex-col">
                 @csrf
                 @method('PUT')
 
                 <div class="space-y-5 flex-1">
 
-                    {{-- NAMA --}}
                     <div>
                         <label for="name" class="block text-sm font-semibold text-slate-700 mb-2">
                             Nama Lengkap
@@ -197,7 +193,6 @@
                         @enderror
                     </div>
 
-                    {{-- USERNAME --}}
                     <div>
                         <label for="username" class="block text-sm font-semibold text-slate-700 mb-2">
                             Username
@@ -225,7 +220,6 @@
                         @enderror
                     </div>
 
-                    {{-- FIELD PER ROLE --}}
                     @if($user->role === 'admin')
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
@@ -309,7 +303,6 @@
                         </div>
                     @endif
 
-                    {{-- INFO BOX --}}
                     <div class="rounded-xl bg-sky-50 border border-sky-100 px-4 py-3 flex items-start gap-3">
                         <div class="w-5 h-5 rounded-full bg-sky-200 text-sky-700 flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">i</div>
                         <p class="text-xs text-sky-700 leading-relaxed">
@@ -319,7 +312,6 @@
 
                 </div>
 
-                {{-- TOMBOL --}}
                 <div class="mt-6 pt-6 border-t border-slate-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 shrink-0">
                     <a href="{{ route('profil.index') }}"
                        class="inline-flex items-center justify-center px-5 py-3 rounded-xl
@@ -346,14 +338,66 @@
 
 </div>
 
+
+{{-- =====================================================
+     GANTI PASSWORD (DI HALAMAN EDIT JUGA)
+====================================================== --}}
+<div class="mt-6 bg-white p-6 sm:p-7 rounded-2xl border border-slate-100 shadow-sm">
+
+    <div class="flex items-start gap-4 mb-6">
+        <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                 stroke-width="1.8" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"/>
+            </svg>
+        </div>
+        <div>
+            <h3 class="text-lg font-bold text-slate-900">Ganti Password</h3>
+            <p class="text-sm text-slate-400 mt-1">Perbarui password akun Anda secara berkala.</p>
+        </div>
+    </div>
+
+    <form action="{{ route('profil.password') }}" method="POST" class="space-y-4">
+        @csrf
+        @method('PUT')
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Password Lama</label>
+                <input type="password" name="current_password" required
+                       class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Password Baru</label>
+                <input type="password" name="password" required minlength="8"
+                       class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1.5">Konfirmasi Password</label>
+                <input type="password" name="password_confirmation" required minlength="8"
+                       class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100">
+            </div>
+        </div>
+
+        <div class="flex justify-end pt-2">
+            <button type="submit"
+                    class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold shadow-md shadow-amber-200 transition">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+                Simpan Password Baru
+            </button>
+        </div>
+    </form>
+
+</div>
+
 @endsection
 
 
 @push('scripts')
 <script>
-    // ---------------------------------------------
-    // AUTO-SUBMIT FOTO SAAT DIPILIH
-    // ---------------------------------------------
     function autoSubmitFoto(input) {
         if (!input.files || !input.files[0]) return;
 

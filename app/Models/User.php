@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'name',
     'username',
     'password',
+    'must_change_password',
     'role',
     'sub_role',
     'status',
@@ -41,6 +42,7 @@ class User extends Authenticatable
         return [
             'email_verified_at'       => 'datetime',
             'password'                => 'hashed',
+            'must_change_password'    => 'boolean',
             'tanggal_nonaktif'        => 'date',
             'jatah_cuti_tahunan'      => 'integer',
             'cuti_tahunan_sebelumnya' => 'integer',

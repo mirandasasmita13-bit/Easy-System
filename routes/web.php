@@ -18,7 +18,14 @@ use App\Http\Controllers\ProfilController;
 use App\Http\Controllers\PengajuanController;
 use App\Http\Controllers\FileController;
 use App\Http\Controllers\ManajemenCutiController;
-
+use App\Http\Controllers\AdminController;
+use App\Http\Controllers\Admin\AbsensiController as AdminAbsensiController;
+use App\Http\Controllers\Admin\LupaAbsenController as AdminLupaAbsenController;
+use App\Http\Controllers\Admin\SuratController as AdminSuratController;
+use App\Http\Controllers\Admin\CutiController as AdminCutiController;
+use App\Http\Controllers\Admin\LemburController as AdminLemburController;
+use App\Http\Controllers\Admin\CutiLaluController as AdminCutiLaluController;
+use App\Http\Controllers\Admin\LiburController as AdminLiburController;
 
 // ROOT — Redirect ke dashboard atau login
 Route::get('/', function () {
@@ -89,6 +96,8 @@ Route::middleware('auth')->group(function () {
     // Preview File
     Route::get('/file/{type}/{id}', [FileController::class, 'preview'])->name('file.preview');
 
+    Route::middleware(['auth', 'force.change.password'])->group(function () {});
+    
     // Toggle pendaftaran
     Route::post('/admin/toggle-pendaftaran', function () {
         if (auth()->user()->role !== 'admin') {
@@ -102,6 +111,7 @@ Route::middleware('auth')->group(function () {
             'Pendaftaran berhasil ' . ($status ? 'dibuka' : 'ditutup') . '.'
         );
     })->middleware('auth')->name('admin.toggle-pendaftaran');
+});
 
 
     // ============================================
@@ -109,12 +119,10 @@ Route::middleware('auth')->group(function () {
     // ============================================
     Route::middleware('role:pegawai')->group(function () {
 
-        // CUTI TAMBAHAN (khusus pegawai)
         Route::get('/cuti-tambahan',  [CutiTambahanController::class, 'index'])->name('cuti_tambahan.index');
         Route::post('/cuti-tambahan', [CutiTambahanController::class, 'store'])->name('cuti_tambahan.store');
-
+        Route::post('/cuti-tambahan/{cutiTambahan}/cancel', [CutiTambahanController::class, 'cancel'])->name('cuti_tambahan.cancel');
     });
-
 
     // ============================================
     // ADMIN ONLY
@@ -154,6 +162,12 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/monitoring-cuti-tambahan/{cutiTambahan}/download', [CutiTambahanController::class, 'downloadSurat'])
             ->name('cuti_tambahan.admin.download');
+        
+        Route::put('/monitoring-cuti-tambahan/{cutiTambahan}', [CutiTambahanController::class, 'adminUpdate'])
+            ->name('cuti_tambahan.admin.update');
+
+        Route::post('/monitoring-cuti-tambahan/{cutiTambahan}/cancel', [CutiTambahanController::class, 'adminCancel'])
+            ->name('cuti_tambahan.admin.cancel');
 
         // APPROVAL CENTER
         Route::get('/pengajuan', [PengajuanController::class, 'index'])->name('pengajuan.index');
@@ -170,5 +184,121 @@ Route::middleware('auth')->group(function () {
 
         // LAPORAN
         Route::get('/laporan', [LaporanController::class, 'index'])->name('laporan');
-    });
+});
+
+    Route::middleware(['auth', 'admin'])->prefix('admin/control')->group(function () {
+
+        // Halaman utama
+        Route::get('/', [AdminController::class, 'index'])
+            ->name('admin.control');
+
+        // User management
+        Route::post('/user', [AdminController::class, 'userStore'])
+            ->name('admin.user.store');
+
+        Route::put('/user/{user}', [AdminController::class, 'userUpdate'])
+            ->name('admin.user.update');
+
+        Route::delete('/user/{user}', [AdminController::class, 'userDestroy'])
+            ->name('admin.user.destroy');
+
+        // =====================================================
+        // ABSENSI MANAGEMENT
+        // =====================================================
+        Route::post('/absensi', [AdminAbsensiController::class, 'store'])       // ⬅️ BARU
+            ->name('admin.absensi.store');
+
+        Route::put('/absensi/{absensi}', [AdminAbsensiController::class, 'update'])
+            ->name('admin.absensi.update');
+
+        Route::delete('/absensi/{absensi}', [AdminAbsensiController::class, 'destroy'])
+            ->name('admin.absensi.destroy');
+
+        // =====================================================
+        // LUPA ABSEN MANAGEMENT
+        // =====================================================
+        Route::post('/lupa', [\App\Http\Controllers\Admin\LupaAbsenController::class, 'store'])
+            ->name('admin.lupa.store');
+
+        Route::post('/lupa/{id}/approve', [AdminLupaAbsenController::class, 'approve'])
+            ->name('admin.lupa.approve');
+
+        Route::post('/lupa/{id}/reject', [AdminLupaAbsenController::class, 'reject'])
+            ->name('admin.lupa.reject');
+
+        Route::put('/lupa/{id}', [AdminLupaAbsenController::class, 'update'])
+            ->name('admin.lupa.update');
+
+        Route::delete('/lupa/{id}', [\App\Http\Controllers\Admin\LupaAbsenController::class, 'destroy'])
+            ->name('admin.lupa.destroy');
+
+        Route::post('/lupa/{id}/cancel', [AdminLupaAbsenController::class, 'cancel'])
+            ->name('admin.lupa.cancel');
+
+        // =====================================================
+        // SURAT MANAGEMENT
+        // =====================================================
+        Route::delete('/surat/{id}', [AdminSuratController::class, 'destroy'])
+            ->name('admin.surat.destroy');
+
+        // =====================================================
+        // CUTI MANAGEMENT
+        // =====================================================
+        Route::put('/cuti/{id}', [AdminCutiController::class, 'update'])
+            ->name('admin.cuti.update');
+
+        Route::delete('/cuti/{id}', [AdminCutiController::class, 'destroy'])
+            ->name('admin.cuti.destroy');
+
+        // =====================================================
+        // LEMBUR MANAGEMENT
+        // =====================================================
+        Route::post('/lembur/{id}/approve', [AdminLemburController::class, 'approve'])
+            ->name('admin.lembur.approve');
+
+        Route::post('/lembur/{id}/reject', [AdminLemburController::class, 'reject'])
+            ->name('admin.lembur.reject');
+
+        Route::post('/lembur/{id}/cancel', [AdminLemburController::class, 'cancel'])
+            ->name('admin.lembur.cancel');
+
+        Route::put('/lembur/{id}', [AdminLemburController::class, 'update'])
+            ->name('admin.lembur.update');
+
+        Route::delete('/lembur/{id}', [AdminLemburController::class, 'destroy'])
+            ->name('admin.lembur.destroy');
+
+        Route::post('/lembur', [\App\Http\Controllers\Admin\LemburController::class, 'store'])
+            ->name('admin.lembur.store');
+
+        // =====================================================
+        // CUTI LALU MANAGEMENT
+        // =====================================================
+        Route::post('/cuti-lalu', [AdminCutiLaluController::class, 'store'])
+            ->name('admin.cuti-lalu.store');
+
+        Route::put('/cuti-lalu/{id}', [AdminCutiLaluController::class, 'update'])
+            ->name('admin.cuti-lalu.update');
+
+        Route::delete('/cuti-lalu/{id}', [AdminCutiLaluController::class, 'destroy'])
+            ->name('admin.cuti-lalu.destroy');
+
+        // =====================================================
+        // LIBUR MANAGEMENT
+        // =====================================================
+        Route::post('/libur', [AdminLiburController::class, 'store'])
+            ->name('admin.libur.store');
+
+        Route::put('/libur/{id}', [AdminLiburController::class, 'update'])
+            ->name('admin.libur.update');
+
+        Route::delete('/libur/{id}', [AdminLiburController::class, 'destroy'])
+            ->name('admin.libur.destroy');
+
+        Route::post('/libur/import-nasional', [AdminLiburController::class, 'importNasional'])
+            ->name('admin.libur.import');
+
+        // Reset Password User
+        Route::post('/user/{user}/reset-password', [AdminController::class, 'userResetPassword'])
+            ->name('admin.user.reset-password');
 });

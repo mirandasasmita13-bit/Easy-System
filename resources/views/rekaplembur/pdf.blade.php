@@ -46,27 +46,6 @@
             padding: 3px 0;
         }
 
-        .summary {
-            margin-bottom: 15px;
-        }
-
-        .summary-box {
-            border: 1px solid #ddd;
-            padding: 8px 12px;
-            width: 150px;
-            text-align: center;
-        }
-
-        .summary-title {
-            font-size: 9px;
-            color: #666;
-        }
-
-        .summary-value {
-            font-size: 18px;
-            font-weight: bold;
-        }
-
         table.data {
             width: 100%;
             border-collapse: collapse;
@@ -115,13 +94,18 @@
     <div class="info">
         <table>
             <tr>
-                <td style="width: 120px;">Periode</td>
+                <td style="width: 140px;">Periode</td>
                 <td>: {{ $tanggalAwal->translatedFormat('F Y') }}</td>
             </tr>
 
             <tr>
                 <td>Total Lembur</td>
                 <td>: {{ $jumlahLembur }} kali</td>
+            </tr>
+
+            <tr>
+                <td>Total Jam Disetujui</td>
+                <td>: {{ number_format($totalJamDisetujui ?? 0, 2) }} jam</td>
             </tr>
         </table>
     </div>
@@ -132,11 +116,12 @@
 
         <thead>
             <tr>
-                <th style="width: 35px;">No</th>
-                <th style="width: 80px;">Tanggal</th>
-                <th style="width: 150px;">Nama Pegawai</th>
-                <th style="width: 65px;">Mulai</th>
-                <th style="width: 65px;">Selesai</th>
+                <th style="width: 30px;">No</th>
+                <th style="width: 75px;">Tanggal</th>
+                <th style="width: 140px;">Nama Pegawai</th>
+                <th style="width: 55px;">Mulai</th>
+                <th style="width: 55px;">Selesai</th>
+                <th style="width: 55px;">Total Jam</th>
                 <th>Kegiatan</th>
                 <th>Keterangan</th>
             </tr>
@@ -174,6 +159,10 @@
                             : '-' }}
                     </td>
 
+                    <td class="center">
+                        {{ $item->total_jam ?? 0 }}
+                    </td>
+
                     <td>
                         {{ $item->kegiatan ?? '-' }}
                     </td>
@@ -187,7 +176,7 @@
             @empty
 
                 <tr>
-                    <td colspan="7" class="center">
+                    <td colspan="8" class="center">
                         Tidak ada data lembur pada periode ini.
                     </td>
                 </tr>

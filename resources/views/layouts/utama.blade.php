@@ -257,6 +257,26 @@
                     <span class="text-sm font-medium">Pengajuan</span>
                 </a>
 
+{{-- ADMIN CONTROL --}}
+        @php
+            $adminControlAktif = request()->is('admin/control*');
+        @endphp
+
+        <div class="my-5 h-px bg-white/10"></div>
+
+        <p class="mb-3 px-4 text-[10px] uppercase tracking-[0.2em] text-amber-300">
+            System
+        </p>
+
+        <a href="{{ route('admin.control') }}"
+        class="flex items-center gap-4 rounded-xl px-4 py-3 transition
+                {{ $adminControlAktif ? 'bg-amber-500/20 text-white' : 'text-purple-100 hover:bg-white/5' }}">
+            <span class="text-sm {{ $adminControlAktif ? 'text-amber-300' : 'text-purple-400' }}">
+                {{ $adminControlAktif ? '●' : '○' }}
+            </span>
+            <span class="text-sm font-medium">Admin Control</span>
+        </a>
+
 
             {{-- =================================================
                 PPNPN / SATPAM / PRAMUBAKTI
@@ -524,6 +544,11 @@
             <a href="{{ url('/pengajuan') }}" class="mobile-menu-item">
                 <span class="text-purple-300">{{ request()->is('pengajuan*') || request()->is('approval/*') || request()->is('admin/cuti*') ? '●' : '○' }}</span>
                 Pengajuan
+            </a>
+
+            <a href="{{ route('admin.control') }}" class="mobile-menu-item">
+                <span class="text-amber-300">{{ request()->is('admin/control*') ? '●' : '○' }}</span>
+                Admin Control
             </a>
 
         @elseif($role === 'ppnpn')

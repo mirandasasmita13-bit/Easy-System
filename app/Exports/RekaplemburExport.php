@@ -18,19 +18,20 @@ class RekaplemburExport implements FromCollection, WithHeadings, WithMapping, Wi
 
     public function __construct($bulan, $tahun, $userId = null)
     {
-        $this->bulan = $bulan;
-        $this->tahun = $tahun;
+        $this->bulan  = $bulan;
+        $this->tahun  = $tahun;
         $this->userId = $userId;
     }
 
     /**
-     * Ambil data lembur
+     * Ambil data lembur — CUMA YANG APPROVED
      */
     public function collection(): Enumerable
     {
         $query = Lembur::with('user.profil')
             ->whereYear('tanggal', $this->tahun)
-            ->whereMonth('tanggal', $this->bulan);
+            ->whereMonth('tanggal', $this->bulan)
+            ->where('status_approval', 'approved');  // ⬅️ KUNCI
 
         if ($this->userId) {
             $query->where('user_id', $this->userId);
@@ -53,6 +54,7 @@ class RekaplemburExport implements FromCollection, WithHeadings, WithMapping, Wi
             'Nama Pegawai',
             'Jam Mulai',
             'Jam Selesai',
+            'Total Jam',
             'Kegiatan',
             'Keterangan',
         ];
@@ -64,7 +66,6 @@ class RekaplemburExport implements FromCollection, WithHeadings, WithMapping, Wi
     public function map($lembur): array
     {
         static $no = 0;
-
         $no++;
 
         return [
@@ -84,6 +85,8 @@ class RekaplemburExport implements FromCollection, WithHeadings, WithMapping, Wi
                 ? date('H:i', strtotime($lembur->jam_selesai))
                 : '-',
 
+            $lembur->total_jam ?? 0,   // ⬅️ TAMBAH KOLOM
+
             $lembur->kegiatan ?? '-',
 
             $lembur->keterangan ?? '-',
@@ -93,15 +96,14 @@ class RekaplemburExport implements FromCollection, WithHeadings, WithMapping, Wi
     /**
      * Styling header Excel
      */
-
     public function styles(Worksheet $sheet): ?array
-{
-    return [
-        1 => [
-            'font' => [
-                'bold' => true,
+    {
+        return [
+            1 => [
+                'font' => [
+                    'bold' => true,
+                ],
             ],
-        ],
-    ];
-}
+        ];
+    }
 }

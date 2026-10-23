@@ -15,7 +15,7 @@
     </h2>
 
     <p class="mt-2 text-slate-500">
-        Rekap kegiatan lembur pegawai yang tercatat dalam sistem.
+        Rekap kegiatan lembur pegawai yang <strong>sudah disetujui</strong>.
     </p>
 
 </div>
@@ -26,23 +26,40 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-[0.7fr_1.3fr] gap-6 mb-6">
 
-    {{-- JUMLAH LEMBUR --}}
-
+    {{-- RINGKASAN --}}
     <div class="es-card px-7 py-7 flex flex-col justify-center">
 
-        <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Jumlah Lembur
-        </p>
+        <div class="grid grid-cols-2 gap-4">
 
-        <div class="flex items-end gap-2 mt-3">
+            {{-- JUMLAH LEMBUR --}}
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Jumlah Lembur
+                </p>
+                <div class="flex items-end gap-1.5 mt-2">
+                    <span class="text-3xl font-extrabold text-purple-600">
+                        {{ $jumlahLembur }}
+                    </span>
+                    <span class="text-xs text-slate-400 mb-1">
+                        kali
+                    </span>
+                </div>
+            </div>
 
-            <span class="text-4xl font-extrabold text-purple-600">
-                {{ $jumlahLembur }}
-            </span>
-
-            <span class="text-sm text-slate-400 mb-1">
-                kali
-            </span>
+            {{-- TOTAL JAM --}}
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Total Jam
+                </p>
+                <div class="flex items-end gap-1.5 mt-2">
+                    <span class="text-3xl font-extrabold text-indigo-600">
+                        {{ number_format($totalJamDisetujui ?? 0, 1) }}
+                    </span>
+                    <span class="text-xs text-slate-400 mb-1">
+                        jam
+                    </span>
+                </div>
+            </div>
 
         </div>
 
@@ -50,7 +67,6 @@
 
 
     {{-- TAMPILKAN REKAP --}}
-
     <div class="es-card px-7 py-6">
 
         <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-4">
@@ -65,7 +81,6 @@
             <div class="flex flex-col sm:flex-row gap-3">
 
                 {{-- BULAN --}}
-
                 <select
                     name="bulan"
                     class="
@@ -83,23 +98,18 @@
                         focus:ring-purple-100
                     "
                 >
-
                     @foreach(range(1, 12) as $bulanOption)
-
                         <option
                             value="{{ $bulanOption }}"
                             @selected($bulan == $bulanOption)
                         >
                             {{ \Carbon\Carbon::create()->month($bulanOption)->translatedFormat('F') }}
                         </option>
-
                     @endforeach
-
                 </select>
 
 
                 {{-- TAHUN --}}
-
                 <select
                     name="tahun"
                     class="
@@ -118,23 +128,18 @@
                         focus:ring-purple-100
                     "
                 >
-
                     @foreach(range(now()->year - 2, now()->year + 1) as $tahunOption)
-
                         <option
                             value="{{ $tahunOption }}"
                             @selected($tahun == $tahunOption)
                         >
                             {{ $tahunOption }}
                         </option>
-
                     @endforeach
-
                 </select>
 
 
                 {{-- TAMPILKAN --}}
-
                 <button
                     type="submit"
                     class="
@@ -188,7 +193,6 @@
 
 
         {{-- EXPORT --}}
-
         <div class="flex flex-wrap gap-2">
 
             <a
@@ -260,7 +264,7 @@
         </h3>
 
         <p class="text-sm text-slate-400 mt-1">
-            Daftar lembur yang tercatat dalam sistem.
+            Hanya menampilkan lembur yang <strong>sudah disetujui</strong>.
         </p>
 
     </div>
@@ -290,6 +294,10 @@
                         Jam
                     </th>
 
+                    <th class="px-4 py-4 text-center text-xs font-bold text-slate-500">
+                        Total Jam
+                    </th>
+
                     <th class="px-4 py-4 text-left text-xs font-bold text-slate-500">
                         Kegiatan
                     </th>
@@ -310,22 +318,16 @@
                     <tr class="hover:bg-slate-50/60 transition">
 
                         {{-- NO --}}
-
                         <td class="px-4 py-5 text-center">
-
                             <span class="text-sm font-semibold text-slate-500">
                                 {{ $index + 1 }}
                             </span>
-
                         </td>
 
 
                         {{-- NAMA --}}
-
                         <td class="px-4 py-5">
-
                             <div class="flex items-center gap-3">
-
                                 <div class="
                                     w-9 h-9
                                     rounded-xl
@@ -337,7 +339,6 @@
                                     text-xs
                                     font-extrabold
                                 ">
-
                                     {{ strtoupper(
                                         substr(
                                             $lembur->user?->name ?? '?',
@@ -345,114 +346,98 @@
                                             2
                                         )
                                     ) }}
-
                                 </div>
 
-
                                 <div>
-
                                     <p class="
                                         text-sm
                                         font-bold
                                         text-slate-800
                                     ">
-
                                         {{ $lembur->user?->name ?? 'Tidak diketahui' }}
-
                                     </p>
-
                                     <p class="
                                         text-[11px]
                                         text-slate-400
                                     ">
-
                                         {{ $lembur->user?->profil?->jabatan ?? 'PPNPN' }}
-
                                     </p>
-
                                 </div>
-
                             </div>
-
                         </td>
 
 
                         {{-- TANGGAL --}}
-
                         <td class="px-4 py-5 whitespace-nowrap">
-
                             <p class="
                                 text-sm
                                 font-bold
                                 text-slate-800
                             ">
-
                                 {{ \Carbon\Carbon::parse($lembur->tanggal)->translatedFormat('d F Y') }}
-
                             </p>
-
                             <p class="
                                 text-xs
                                 text-slate-400
                                 mt-0.5
                             ">
-
                                 {{ \Carbon\Carbon::parse($lembur->tanggal)->translatedFormat('l') }}
-
                             </p>
-
                         </td>
 
 
                         {{-- JAM --}}
-
                         <td class="px-4 py-5 whitespace-nowrap">
-
                             <span class="
                                 text-sm
                                 font-semibold
                                 text-slate-700
                             ">
-
                                 {{ $lembur->jam_mulai ?? '--:--' }}
                                 –
                                 {{ $lembur->jam_selesai ?? '--:--' }}
-
                             </span>
+                        </td>
 
+
+                        {{-- TOTAL JAM --}}
+                        <td class="px-4 py-5 text-center whitespace-nowrap">
+                            <span class="
+                                inline-flex
+                                items-center
+                                justify-center
+                                rounded-lg
+                                bg-indigo-50
+                                text-indigo-700
+                                px-2.5
+                                py-1
+                                text-xs
+                                font-bold
+                            ">
+                                {{ $lembur->total_jam ?? 0 }} jam
+                            </span>
                         </td>
 
 
                         {{-- KEGIATAN --}}
-
                         <td class="px-4 py-5 min-w-[220px]">
-
                             <p class="
                                 text-sm
                                 text-slate-600
                             ">
-
                                 {{ $lembur->kegiatan ?? '-' }}
-
                             </p>
-
                             @if($lembur->keterangan)
-
                                 <p class="text-xs text-slate-400 mt-1">
                                     {{ $lembur->keterangan }}
                                 </p>
-
                             @endif
-
                         </td>
 
 
                         {{-- BUKTI --}}
-
                         <td class="px-4 py-5 text-center">
-
                             @if($lembur->foto)
-
                                 <button
                                     type="button"
                                     onclick="openBuktiModal('{{ asset('storage/' . $lembur->foto) }}')"
@@ -472,15 +457,11 @@
                                 >
                                     Lihat
                                 </button>
-
                             @else
-
                                 <span class="text-xs text-slate-300">
                                     —
                                 </span>
-
                             @endif
-
                         </td>
 
                     </tr>
@@ -488,12 +469,10 @@
                 @empty
 
                     <tr>
-
                         <td
-                            colspan="6"
+                            colspan="7"
                             class="px-6 py-16 text-center"
                         >
-
                             <p class="
                                 text-sm
                                 font-semibold
@@ -501,17 +480,14 @@
                             ">
                                 Belum ada data lembur
                             </p>
-
                             <p class="
                                 text-xs
                                 text-slate-400
                                 mt-1
                             ">
-                                Data lembur akan muncul setelah tercatat.
+                                Data lembur yang sudah disetujui akan muncul di sini.
                             </p>
-
                         </td>
-
                     </tr>
 
                 @endforelse
@@ -524,7 +500,6 @@
 
 
     {{-- FOOTER --}}
-
     <div class="
         px-5 sm:px-6
         py-4
@@ -532,14 +507,9 @@
         border-slate-100
         bg-slate-50/50
     ">
-
         <p class="text-xs text-slate-400">
-
-            Rekap lembur ditampilkan berdasarkan periode dan PPNPN
-            yang dipilih oleh admin.
-
+            Rekap ini hanya menampilkan lembur yang sudah disetujui oleh admin.
         </p>
-
     </div>
 
 </div>
@@ -576,7 +546,6 @@
     >
 
         {{-- HEADER MODAL --}}
-
         <div class="
             flex
             items-center
@@ -586,19 +555,14 @@
             border-b
             border-slate-100
         ">
-
             <div>
-
                 <h3 class="font-bold text-slate-900">
                     Bukti Lembur
                 </h3>
-
                 <p class="text-xs text-slate-400 mt-0.5">
                     Dokumentasi kegiatan lembur
                 </p>
-
             </div>
-
 
             <button
                 type="button"
@@ -617,14 +581,11 @@
             >
                 ✕
             </button>
-
         </div>
 
 
         {{-- GAMBAR --}}
-
         <div class="p-5 bg-slate-50">
-
             <img
                 id="buktiPreview"
                 src=""
@@ -637,12 +598,10 @@
                     bg-white
                 "
             >
-
         </div>
 
 
         {{-- FOOTER MODAL --}}
-
         <div class="
             flex
             justify-end
@@ -652,7 +611,6 @@
             border-t
             border-slate-100
         ">
-
             <button
                 type="button"
                 onclick="closeBuktiModal()"
@@ -688,7 +646,6 @@
             >
                 Download
             </a>
-
         </div>
 
     </div>
@@ -701,7 +658,6 @@
 <script>
 
     function openBuktiModal(url) {
-
         const modal = document.getElementById('buktiModal');
         const image = document.getElementById('buktiPreview');
         const download = document.getElementById('buktiDownload');
@@ -711,29 +667,23 @@
 
         modal.classList.remove('hidden');
         modal.classList.add('flex');
-
     }
 
 
     function closeBuktiModal() {
-
         const modal = document.getElementById('buktiModal');
         const image = document.getElementById('buktiPreview');
 
         modal.classList.add('hidden');
         modal.classList.remove('flex');
-
         image.src = '';
-
     }
 
 
     document.getElementById('buktiModal')?.addEventListener('click', function(event) {
-
         if (event.target === this) {
             closeBuktiModal();
         }
-
     });
 
 </script>
